@@ -9,6 +9,147 @@ as published by the Free Software Foundation.
 
 */
 
+#include <linux/limits.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+
+#define PORT 8080
+
 int main () {
+	errno = 0;
+	char hostname[PATH_MAX];
+	int rc = gethostname(hostname, sizeof(hostname));
+	if (-1 == rc) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		_exit(1);
+	}
+
+	errno = 0;
+	// NOTE: getaddrinfo does not set `errno` unless there's an issue at the system level and it does not simply set the error code `rc` to -1 as other utilities (see man getaddrinfo() for more details)
+	char const *node = hostname;
+	char const *service = NULL;
+	struct addrinfo hints = {};
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = 0;
+	hints.ai_addrlen = sizeof(struct sockaddr_in);
+	struct addrinfo *ai = NULL;
+	rc = getaddrinfo(
+		node,
+		service,
+		&hints,
+		&ai
+	);
+	if (rc) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		_exit(1);
+	}
+	struct sockaddr_in *sin = (typeof(sin)) ai->ai_addr;
+	sin->sin_port = htons(PORT);
+	fprintf(stdout, "host: %s port: %d\n", inet_ntoa(sin->sin_addr), ntohs(sin->sin_port));
+
+	errno = 0;
+	int const fd = socket(AF_INET, SOCK_STREAM, 0);
+	if (-1 == fd) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		freeaddrinfo(ai);
+		_exit(1);
+	}
+
+	rc = bind(fd, (struct sockaddr*) sin, sizeof(*sin));
+	if (-1 == rc) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		freeaddrinfo(ai);
+		_exit(1);
+	}
+
+	int const backlog = 32;
+	rc = listen(fd, backlog);
+	if (-1 == rc) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		freeaddrinfo(ai);
+		_exit(1);
+	}
+
+	struct sockaddr_in client = {};
+	socklen_t len = sizeof(struct sockaddr_in);
+	rc = accept(fd, (struct sockaddr*) &client, &len);
+	if (-1 == rc) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		freeaddrinfo(ai);
+		_exit(1);
+	}
+	int sockfd = rc;
+	fprintf(stdout, "client: %s port: %d\n", inet_ntoa(client.sin_addr), ntohs(client.sin_port));
+
+	errno = 0;
+	FILE *stream = fdopen(sockfd, "r");
+	if (!stream) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		freeaddrinfo(ai);
+		_exit(1);
+	}
+
+	errno = 0;
+	int sw = 0;
+	char *line = NULL;
+	size_t bytes_line = 0;
+	do {
+		ssize_t bytes_read = getline(&line, &bytes_line, stream);
+		if (-1 == bytes_read) {
+			if (errno) {
+				fprintf(stderr, "%s\n", strerror(errno));
+				free(line);
+				freeaddrinfo(ai);
+				fclose(stream);
+				_exit(1);
+			}
+			sw = 0;
+		}
+		else {
+			fprintf(stdout, "%s", line);
+			// we have reached the end of HTTP header
+			if (2 == bytes_read) {
+				sw = 0;
+			}
+			else {
+				sw = 1;
+			}
+		}
+	} while (sw);
+
+
+	free(line);
+	freeaddrinfo(ai);
+	line = NULL;
+	bytes_line = 0;
+	ai = NULL;
+	fclose(stream);
+	stream = NULL;
+	_exit(0);
 	return 0;
 }
