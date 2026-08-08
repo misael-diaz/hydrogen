@@ -1,3 +1,6 @@
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 /*
 
 sonic-httpd
@@ -13,18 +16,48 @@ as published by the Free Software Foundation.
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/mman.h>
+#include <sys/wait.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <unistd.h>
+#include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 
 #define PORT 8080
+
+#ifndef __cplusplus
+#define __httpd_extern
+#else
+#define __httpd_extern extern "C"
+#endif
+
+__httpd_extern
+int respond(void *data) {
+
+	char response[] = (
+		"HTTP/1.1 200\r\n"
+		"\r\n"
+	);
+
+	errno = 0;
+	int *sockfd = (typeof(sockfd)) data;
+	int fd = *sockfd;
+	ssize_t rc = write(fd, response, sizeof(response) - 1);
+	if (-1 == rc) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		_exit(1);
+	}
+
+	return 0;
+}
 
 int main () {
 	errno = 0;
@@ -125,6 +158,35 @@ int main () {
 		_exit(1);
 	}
 
+	errno = 0;
+	size_t size_stack = (pagesize << 1);
+	void *stack = mmap(NULL,
+			size_stack,
+			PROT_READ | PROT_WRITE,
+			MAP_STACK | MAP_ANONYMOUS | MAP_PRIVATE,
+			-1,
+			0
+	);
+	if (MAP_FAILED == stack) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		freeaddrinfo(ai);
+		_exit(1);
+	}
+
+	errno = 0;
+	rc = mprotect(stack, pagesize, PROT_NONE);
+	if (-1 == rc) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		freeaddrinfo(ai);
+		_exit(1);
+	}
+
+	char *top_stack = ((char*) stack) + size_stack;
+
 	int sw = 0;
 	ssize_t bytes_read = 0;
 	ssize_t bytes_total = 0;
@@ -159,19 +221,28 @@ int main () {
 	fprintf(stdout, "%s", (char*) head);
 	fprintf(stdout, "bytes: %ld\n", bytes_total);
 
-	char response[] = (
-		"HTTP/1.1 200\r\n"
-		"\r\n"
-	);
+	void *data = &sockfd;
+	pid_t pid = clone(respond, top_stack, CLONE_PTRACE | SIGCHLD, data);
 
 	errno = 0;
-	ret = write(sockfd, response, sizeof(response) - 1);
-	if (-1 == ret) {
+	int wstatus = 0;
+	rc = waitpid(pid, &wstatus, 0);
+	if (-1 == rc) {
 		if (errno) {
 			fprintf(stderr, "%s\n", strerror(errno));
 		}
+		freeaddrinfo(ai);
+		_exit(1);
 	}
 
+	if (WIFEXITED(wstatus)) {
+		fprintf(stdout, "status: %d\n", WEXITSTATUS(wstatus));
+	}
+	else if (WIFSIGNALED(wstatus)) {
+		fprintf(stdout, "signal: %d\n", WTERMSIG(wstatus));
+	}
+
+	freeaddrinfo(ai);
 	ai = NULL;
 	_exit(0);
 	return 0;
