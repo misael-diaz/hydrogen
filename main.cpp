@@ -12,6 +12,7 @@ as published by the Free Software Foundation.
 #include <linux/limits.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/mman.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
@@ -104,9 +105,8 @@ int main () {
 	int sockfd = rc;
 	fprintf(stdout, "client: %s port: %d\n", inet_ntoa(client.sin_addr), ntohs(client.sin_port));
 
-	errno = 0;
-	FILE *stream = fdopen(sockfd, "r");
-	if (!stream) {
+	ssize_t ret = sysconf(_SC_PAGESIZE);
+	if (-1 == ret) {
 		if (errno) {
 			fprintf(stderr, "%s\n", strerror(errno));
 		}
@@ -114,34 +114,50 @@ int main () {
 		_exit(1);
 	}
 
-	errno = 0;
+	size_t const pagesize = ret;
+	size_t size_mmap = pagesize;
+	void *head = mmap(NULL, size_mmap, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+	if (MAP_FAILED == head) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		freeaddrinfo(ai);
+		_exit(1);
+	}
+
 	int sw = 0;
-	char *line = NULL;
-	size_t bytes_line = 0;
-	// TODO: replace getline() with read() so that we don't mix up reading from a file descriptor and from a stream
+	ssize_t bytes_read = 0;
+	ssize_t bytes_total = 0;
+	size_t const chunk = 16;
+	char *p = (typeof(p)) head;
 	do {
-		ssize_t bytes_read = getline(&line, &bytes_line, stream);
-		if (-1 == bytes_read) {
-			if (errno) {
+		ret = read(sockfd, p, chunk);
+		if (-1 == ret) {
+			if (EINTR != errno) {
 				fprintf(stderr, "%s\n", strerror(errno));
-				free(line);
 				freeaddrinfo(ai);
-				fclose(stream);
 				_exit(1);
 			}
-			sw = 0;
+			sw = 1;
 		}
 		else {
-			fprintf(stdout, "%s", line);
-			// we have reached the end of HTTP header
-			if (2 == bytes_read) {
+			bytes_read = ret;
+			bytes_total += bytes_read;
+			p += bytes_read;
+			if (!bytes_read) {
 				sw = 0;
 			}
+			else if (chunk != bytes_read)
+				sw = 0;
 			else {
 				sw = 1;
 			}
 		}
 	} while (sw);
+
+	fprintf(stdout, "%s\n", "request header:");
+	fprintf(stdout, "%s", (char*) head);
+	fprintf(stdout, "bytes: %ld\n", bytes_total);
 
 	char response[] = (
 		"HTTP/1.1 200\r\n"
@@ -149,20 +165,14 @@ int main () {
 	);
 
 	errno = 0;
-	ssize_t ret = write(sockfd, response, sizeof(response));
+	ret = write(sockfd, response, sizeof(response));
 	if (-1 == ret) {
 		if (errno) {
 			fprintf(stderr, "%s\n", strerror(errno));
 		}
 	}
 
-	free(line);
-	freeaddrinfo(ai);
-	line = NULL;
-	bytes_line = 0;
 	ai = NULL;
-	fclose(stream);
-	stream = NULL;
 	_exit(0);
 	return 0;
 }
