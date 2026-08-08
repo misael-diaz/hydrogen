@@ -142,6 +142,18 @@ int main () {
 		}
 	} while (sw);
 
+	char response[] = (
+		"HTTP/1.1 200\r\n"
+		"\r\n"
+	);
+
+	errno = 0;
+	ssize_t ret = write(sockfd, response, sizeof(response));
+	if (-1 == ret) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+	}
 
 	free(line);
 	freeaddrinfo(ai);
