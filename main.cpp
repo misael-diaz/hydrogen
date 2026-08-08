@@ -165,7 +165,7 @@ int main () {
 	);
 
 	errno = 0;
-	ret = write(sockfd, response, sizeof(response));
+	ret = write(sockfd, response, sizeof(response) - 1);
 	if (-1 == ret) {
 		if (errno) {
 			fprintf(stderr, "%s\n", strerror(errno));
