@@ -125,19 +125,6 @@ int main () {
 		_exit(1);
 	}
 
-	struct sockaddr_in client = {};
-	socklen_t len = sizeof(struct sockaddr_in);
-	rc = accept(fd, (struct sockaddr*) &client, &len);
-	if (-1 == rc) {
-		if (errno) {
-			fprintf(stderr, "%s\n", strerror(errno));
-		}
-		freeaddrinfo(ai);
-		_exit(1);
-	}
-	int sockfd = rc;
-	fprintf(stdout, "client: %s port: %d\n", inet_ntoa(client.sin_addr), ntohs(client.sin_port));
-
 	ssize_t ret = sysconf(_SC_PAGESIZE);
 	if (-1 == ret) {
 		if (errno) {
@@ -186,6 +173,19 @@ int main () {
 	}
 
 	char *top_stack = ((char*) stack) + size_stack;
+
+	struct sockaddr_in client = {};
+	socklen_t len = sizeof(struct sockaddr_in);
+	rc = accept(fd, (struct sockaddr*) &client, &len);
+	if (-1 == rc) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		freeaddrinfo(ai);
+		_exit(1);
+	}
+	int sockfd = rc;
+	fprintf(stdout, "client: %s port: %d\n", inet_ntoa(client.sin_addr), ntohs(client.sin_port));
 
 	int sw = 0;
 	ssize_t bytes_read = 0;
