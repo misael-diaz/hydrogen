@@ -234,75 +234,75 @@ int main () {
 	running = 1;
 	while (running) {
 
-	struct sockaddr_in client = {};
-	socklen_t len = sizeof(struct sockaddr_in);
-	rc = accept(fd, (struct sockaddr*) &client, &len);
-	if (-1 == rc) {
-		if (errno) {
-			fprintf(stderr, "%s\n", strerror(errno));
-		}
-		freeaddrinfo(ai);
-		_exit(1);
-	}
-	int sockfd = rc;
-	fprintf(stdout, "client: %s port: %d\n", inet_ntoa(client.sin_addr), ntohs(client.sin_port));
-
-	int sw = 0;
-	ssize_t bytes_read = 0;
-	ssize_t bytes_total = 0;
-	size_t const chunk = 16;
-	char *p = (typeof(p)) head;
-	do {
-		ret = read(sockfd, p, chunk);
-		if (-1 == ret) {
-			if (EINTR != errno) {
+		struct sockaddr_in client = {};
+		socklen_t len = sizeof(struct sockaddr_in);
+		rc = accept(fd, (struct sockaddr*) &client, &len);
+		if (-1 == rc) {
+			if (errno) {
 				fprintf(stderr, "%s\n", strerror(errno));
-				freeaddrinfo(ai);
-				_exit(1);
 			}
-			sw = 1;
+			freeaddrinfo(ai);
+			_exit(1);
 		}
-		else {
-			bytes_read = ret;
-			bytes_total += bytes_read;
-			p += bytes_read;
-			if (!bytes_read) {
-				sw = 0;
-			}
-			else if (chunk != bytes_read)
-				sw = 0;
-			else {
+		int sockfd = rc;
+		fprintf(stdout, "client: %s port: %d\n", inet_ntoa(client.sin_addr), ntohs(client.sin_port));
+
+		int sw = 0;
+		ssize_t bytes_read = 0;
+		ssize_t bytes_total = 0;
+		size_t const chunk = 16;
+		char *p = (typeof(p)) head;
+		do {
+			ret = read(sockfd, p, chunk);
+			if (-1 == ret) {
+				if (EINTR != errno) {
+					fprintf(stderr, "%s\n", strerror(errno));
+					freeaddrinfo(ai);
+					_exit(1);
+				}
 				sw = 1;
 			}
+			else {
+				bytes_read = ret;
+				bytes_total += bytes_read;
+				p += bytes_read;
+				if (!bytes_read) {
+					sw = 0;
+				}
+				else if (chunk != bytes_read)
+					sw = 0;
+				else {
+					sw = 1;
+				}
+			}
+		} while (sw);
+
+		fprintf(stdout, "%s\n", "request header:");
+		fprintf(stdout, "%s", (char*) head);
+		fprintf(stdout, "bytes: %ld\n", bytes_total);
+
+		void *data = &sockfd;
+		pid_t pid = clone(respond, top_stack, CLONE_PTRACE | CLONE_FILES | SIGCHLD, data);
+
+		errno = 0;
+		int wstatus = 0;
+		rc = waitpid(-1, &wstatus, WNOHANG);
+		if (-1 == rc) {
+			if (errno) {
+				fprintf(stderr, "%s\n", strerror(errno));
+			}
+			freeaddrinfo(ai);
+			_exit(1);
 		}
-	} while (sw);
-
-	fprintf(stdout, "%s\n", "request header:");
-	fprintf(stdout, "%s", (char*) head);
-	fprintf(stdout, "bytes: %ld\n", bytes_total);
-
-	void *data = &sockfd;
-	pid_t pid = clone(respond, top_stack, CLONE_PTRACE | CLONE_FILES | SIGCHLD, data);
-
-	errno = 0;
-	int wstatus = 0;
-	rc = waitpid(-1, &wstatus, WNOHANG);
-	if (-1 == rc) {
-		if (errno) {
-			fprintf(stderr, "%s\n", strerror(errno));
+		else if (0 < rc) {
+			pid = rc;
+			if (WIFEXITED(wstatus)) {
+				fprintf(stdout, "pid: %d status: %d\n", pid, WEXITSTATUS(wstatus));
+			}
+			else if (WIFSIGNALED(wstatus)) {
+				fprintf(stdout, "pid: %d signal: %d\n", pid, WTERMSIG(wstatus));
+			}
 		}
-		freeaddrinfo(ai);
-		_exit(1);
-	}
-	else if (0 < rc) {
-	pid = rc;
-	if (WIFEXITED(wstatus)) {
-		fprintf(stdout, "pid: %d status: %d\n", pid, WEXITSTATUS(wstatus));
-	}
-	else if (WIFSIGNALED(wstatus)) {
-		fprintf(stdout, "pid: %d signal: %d\n", pid, WTERMSIG(wstatus));
-	}
-	}
 
 	}
 
