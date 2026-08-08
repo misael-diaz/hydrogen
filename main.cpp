@@ -23,6 +23,7 @@ as published by the Free Software Foundation.
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,8 +38,42 @@ as published by the Free Software Foundation.
 #define __httpd_extern extern "C"
 #endif
 
+static int running = 0;
+
+__httpd_extern
+void sig_handler(int signum) {
+	if (SIGINT == signum) {
+		// NOTE: the server won't stop right if it's listening for incoming connections, at the moment the call blocks and so the server is unaware of our intention to stop it, later we can improve this to make it more responsive
+		fprintf(stdout, "%s\n", "sig_handler: have signaled server to stop on the next loop cycle");
+		running = 0;
+	}
+}
+
 __httpd_extern
 int respond(void *data) {
+
+	// NOTE: the child process inherits the signal table from the parent so we need to set SIGINT to its default action (does not affect the parent process (i.e. the http-server)
+	struct sigaction sa = {};
+	sa.sa_handler = SIG_DFL;
+
+	errno = 0;
+	int rc = sigemptyset(&sa.sa_mask);
+	if (-1 == rc) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		_exit(1);
+	}
+	sa.sa_flags = 0;
+
+	errno = 0;
+	rc = sigaction(SIGINT, &sa, NULL);
+	if (-1 == rc) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		_exit(1);
+	}
 
 	char response[] = (
 		"HTTP/1.1 200\r\n"
@@ -48,8 +83,8 @@ int respond(void *data) {
 	errno = 0;
 	int *sockfd = (typeof(sockfd)) data;
 	int fd = *sockfd;
-	ssize_t rc = write(fd, response, sizeof(response) - 1);
-	if (-1 == rc) {
+	ssize_t bytes_written = write(fd, response, sizeof(response) - 1);
+	if (-1 == bytes_written) {
 		if (errno) {
 			fprintf(stderr, "%s\n", strerror(errno));
 		}
@@ -64,6 +99,27 @@ int main () {
 	errno = 0;
 	char hostname[PATH_MAX];
 	int rc = gethostname(hostname, sizeof(hostname));
+	if (-1 == rc) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		_exit(1);
+	}
+
+	struct sigaction sa = {};
+	sa.sa_handler = sig_handler;
+	errno = 0;
+	rc = sigemptyset(&sa.sa_mask);
+	if (-1 == rc) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		_exit(1);
+	}
+	sa.sa_flags = SA_RESTART;
+
+	errno = 0;
+	rc = sigaction(SIGINT, &sa, NULL);
 	if (-1 == rc) {
 		if (errno) {
 			fprintf(stderr, "%s\n", strerror(errno));
@@ -175,8 +231,8 @@ int main () {
 
 	char *top_stack = ((char*) stack) + size_stack;
 
-
-	while (1) {
+	running = 1;
+	while (running) {
 
 	struct sockaddr_in client = {};
 	socklen_t len = sizeof(struct sockaddr_in);
