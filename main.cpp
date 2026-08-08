@@ -56,6 +56,7 @@ int respond(void *data) {
 		_exit(1);
 	}
 
+	close(fd);
 	return 0;
 }
 
@@ -174,6 +175,9 @@ int main () {
 
 	char *top_stack = ((char*) stack) + size_stack;
 
+
+	while (1) {
+
 	struct sockaddr_in client = {};
 	socklen_t len = sizeof(struct sockaddr_in);
 	rc = accept(fd, (struct sockaddr*) &client, &len);
@@ -222,11 +226,11 @@ int main () {
 	fprintf(stdout, "bytes: %ld\n", bytes_total);
 
 	void *data = &sockfd;
-	pid_t pid = clone(respond, top_stack, CLONE_PTRACE | SIGCHLD, data);
+	pid_t pid = clone(respond, top_stack, CLONE_PTRACE | CLONE_FILES | SIGCHLD, data);
 
 	errno = 0;
 	int wstatus = 0;
-	rc = waitpid(pid, &wstatus, 0);
+	rc = waitpid(-1, &wstatus, WNOHANG);
 	if (-1 == rc) {
 		if (errno) {
 			fprintf(stderr, "%s\n", strerror(errno));
@@ -234,12 +238,16 @@ int main () {
 		freeaddrinfo(ai);
 		_exit(1);
 	}
-
+	else if (0 < rc) {
+	pid = rc;
 	if (WIFEXITED(wstatus)) {
-		fprintf(stdout, "status: %d\n", WEXITSTATUS(wstatus));
+		fprintf(stdout, "pid: %d status: %d\n", pid, WEXITSTATUS(wstatus));
 	}
 	else if (WIFSIGNALED(wstatus)) {
-		fprintf(stdout, "signal: %d\n", WTERMSIG(wstatus));
+		fprintf(stdout, "pid: %d signal: %d\n", pid, WTERMSIG(wstatus));
+	}
+	}
+
 	}
 
 	freeaddrinfo(ai);
