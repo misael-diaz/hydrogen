@@ -118,6 +118,7 @@ int main () {
 	int sw = 0;
 	char *line = NULL;
 	size_t bytes_line = 0;
+	// TODO: replace getline() with read() so that we don't mix up reading from a file descriptor and from a stream
 	do {
 		ssize_t bytes_read = getline(&line, &bytes_line, stream);
 		if (-1 == bytes_read) {
