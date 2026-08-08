@@ -193,7 +193,14 @@ int main () {
 
 	size_t const pagesize = ret;
 	size_t size_mmap = pagesize;
-	void *head = mmap(NULL, size_mmap, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+	void *head = mmap(
+		NULL,
+		size_mmap,
+		PROT_READ | PROT_WRITE,
+		MAP_ANONYMOUS | MAP_PRIVATE,
+		-1,
+		0
+	);
 	if (MAP_FAILED == head) {
 		if (errno) {
 			fprintf(stderr, "%s\n", strerror(errno));
@@ -282,7 +289,12 @@ int main () {
 		fprintf(stdout, "bytes: %ld\n", bytes_total);
 
 		void *data = &sockfd;
-		pid_t pid = clone(respond, top_stack, CLONE_PTRACE | CLONE_FILES | SIGCHLD, data);
+		pid_t pid = clone(
+			respond,
+			top_stack,
+			CLONE_PTRACE | CLONE_FILES | SIGCHLD,
+			data
+		);
 
 		errno = 0;
 		int wstatus = 0;
