@@ -44,7 +44,11 @@ __httpd_extern
 void sig_handler(int signum) {
 	if (SIGINT == signum) {
 		// NOTE: the server won't stop right if it's listening for incoming connections, at the moment the call blocks and so the server is unaware of our intention to stop it, later we can improve this to make it more responsive
-		fprintf(stdout, "%s\n", "sig_handler: have signaled server to stop on the next loop cycle");
+		fprintf(
+			stdout,
+			"%s\n",
+			"sig_handler: have signaled server to stop on the next loop cycle"
+		);
 		running = 0;
 	}
 }
@@ -151,7 +155,12 @@ int main () {
 	}
 	struct sockaddr_in *sin = (typeof(sin)) ai->ai_addr;
 	sin->sin_port = htons(PORT);
-	fprintf(stdout, "host: %s port: %d\n", inet_ntoa(sin->sin_addr), ntohs(sin->sin_port));
+	fprintf(
+		stdout,
+		"host: %s port: %d\n",
+		inet_ntoa(sin->sin_addr),
+		ntohs(sin->sin_port)
+	);
 
 	errno = 0;
 	int const fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -252,7 +261,12 @@ int main () {
 			_exit(1);
 		}
 		int sockfd = rc;
-		fprintf(stdout, "client: %s port: %d\n", inet_ntoa(client.sin_addr), ntohs(client.sin_port));
+		fprintf(
+			stdout,
+			"client: %s port: %d\n",
+			inet_ntoa(client.sin_addr),
+			ntohs(client.sin_port)
+		);
 
 		int sw = 0;
 		ssize_t bytes_read = 0;
@@ -309,10 +323,20 @@ int main () {
 		else if (0 < rc) {
 			pid = rc;
 			if (WIFEXITED(wstatus)) {
-				fprintf(stdout, "pid: %d status: %d\n", pid, WEXITSTATUS(wstatus));
+				fprintf(
+					stdout,
+					"pid: %d status: %d\n",
+					pid,
+					WEXITSTATUS(wstatus)
+				);
 			}
 			else if (WIFSIGNALED(wstatus)) {
-				fprintf(stdout, "pid: %d signal: %d\n", pid, WTERMSIG(wstatus));
+				fprintf(
+					stdout,
+					"pid: %d signal: %d\n",
+					pid,
+					WTERMSIG(wstatus)
+				);
 			}
 		}
 
