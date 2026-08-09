@@ -417,9 +417,7 @@ int main () {
 			}
 		}
 		else {
-
 			do {
-
 				errno = 0;
 				int wstatus = 0;
 				rc = waitpid(-1, &wstatus, WNOHANG);
@@ -452,7 +450,6 @@ int main () {
 				}
 
 			} while (running && !request);
-
 		}
 	}
 
