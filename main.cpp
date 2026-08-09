@@ -416,6 +416,7 @@ int main () {
 
 			}
 		}
+		else {
 
 		do {
 
@@ -451,6 +452,8 @@ int main () {
 			}
 
 		} while (running && !request);
+
+		}
 	}
 
 	freeaddrinfo(ai);
