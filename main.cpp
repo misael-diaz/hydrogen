@@ -348,6 +348,10 @@ int main () {
 					freeaddrinfo(ai);
 					_exit(1);
 				}
+				else {
+					// NOTE: rc = EAGAIN or EWOULDBLOCK means no pending requests and so this is the right place to clear this one
+					request = 0;
+				}
 			}
 			else {
 				int sockfd = rc;
@@ -411,7 +415,6 @@ int main () {
 				}
 
 			}
-			request = 0;
 		}
 
 		do {
