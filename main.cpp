@@ -22,6 +22,7 @@ as published by the Free Software Foundation.
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <signal.h>
 #include <sched.h>
@@ -38,6 +39,7 @@ as published by the Free Software Foundation.
 #define __httpd_extern extern "C"
 #endif
 
+static int request = 0;
 static int running = 0;
 
 __httpd_extern
@@ -50,6 +52,15 @@ void sig_handler(int signum) {
 			"sig_handler: received SIGINT terminating execution normally"
 		);
 		running = 0;
+		return;
+	}
+	else if (SIGIO == signum) {
+		fprintf(
+			stdout,
+			"\n\n%s\n\n",
+			"sig_handler: received SIGIO due to request on listening socket"
+		);
+		request = 1;
 		return;
 	}
 }
@@ -73,6 +84,26 @@ int respond(void *data) {
 
 	errno = 0;
 	rc = sigaction(SIGINT, &sa, NULL);
+	if (-1 == rc) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		_exit(1);
+	}
+
+	errno = 0;
+	// NOTE: probably not necessary because child is not the owner of the listening socket
+	rc = sigaction(SIGIO, &sa, NULL);
+	if (-1 == rc) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		_exit(1);
+	}
+
+	errno = 0;
+	// NOTE: probably not necessary because child is not the owner of the listening socket
+	rc = sigaction(SIGURG, &sa, NULL);
 	if (-1 == rc) {
 		if (errno) {
 			fprintf(stderr, "%s\n", strerror(errno));
@@ -132,6 +163,14 @@ int main () {
 		_exit(1);
 	}
 
+	rc = sigaction(SIGIO, &sa, NULL);
+	if (-1 == rc) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		_exit(1);
+	}
+
 	errno = 0;
 	// NOTE: getaddrinfo does not set `errno` unless there's an issue at the system level and it does not simply set the error code `rc` to -1 as other utilities (see man getaddrinfo() for more details)
 	char const *node = hostname;
@@ -166,6 +205,38 @@ int main () {
 	errno = 0;
 	int const fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
 	if (-1 == fd) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		freeaddrinfo(ai);
+		_exit(1);
+	}
+
+	errno = 0;
+	rc = fcntl(fd, F_SETOWN, getpid());
+	if (-1 == rc) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		freeaddrinfo(ai);
+		_exit(1);
+	}
+
+	errno = 0;
+	rc = fcntl(fd, F_GETFL);
+	if (-1 == rc) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		freeaddrinfo(ai);
+		_exit(1);
+	}
+
+	errno = 0;
+	int flags = rc;
+	flags |= O_ASYNC;
+	rc = fcntl(fd, F_SETFL, flags);
+	if (-1 == rc) {
 		if (errno) {
 			fprintf(stderr, "%s\n", strerror(errno));
 		}
@@ -251,6 +322,7 @@ int main () {
 	running = 1;
 	while (running) {
 
+		if (request) {
 		struct sockaddr_in client = {};
 		socklen_t len = sizeof(struct sockaddr_in);
 		rc = accept(fd, (struct sockaddr*) &client, &len);
@@ -322,6 +394,7 @@ int main () {
 			_exit(1);
 		}
 
+		}
 		}
 
 		errno = 0;
