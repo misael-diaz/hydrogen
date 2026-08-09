@@ -45,7 +45,6 @@ static int running = 0;
 __httpd_extern
 void sig_handler(int signum) {
 	if (SIGINT == signum) {
-		// NOTE: the server won't stop right if it's listening for incoming connections, at the moment the call blocks and so the server is unaware of our intention to stop it, later we can improve this to make it more responsive
 		fprintf(
 			stdout,
 			"\n\n%s\n\n",
