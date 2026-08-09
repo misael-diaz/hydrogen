@@ -397,6 +397,8 @@ int main () {
 		}
 		}
 
+		do {
+
 		errno = 0;
 		int wstatus = 0;
 		rc = waitpid(-1, &wstatus, WNOHANG);
@@ -406,6 +408,7 @@ int main () {
 				freeaddrinfo(ai);
 				_exit(1);
 			}
+			sleep(30);
 		}
 		else if (0 < rc) {
 			pid_t pid = rc;
@@ -426,7 +429,8 @@ int main () {
 				);
 			}
 		}
-		sleep(1); // FIXME you may want to use epoll or signals
+
+		} while (!request);
 	}
 
 	freeaddrinfo(ai);
