@@ -50,6 +50,7 @@ void sig_handler(int signum) {
 			"sig_handler: received SIGINT terminating execution normally"
 		);
 		running = 0;
+		return;
 	}
 }
 
