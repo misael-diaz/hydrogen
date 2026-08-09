@@ -260,7 +260,8 @@ int main () {
 				freeaddrinfo(ai);
 				_exit(1);
 			}
-		} else {
+		}
+		else {
 		int sockfd = rc;
 		fprintf(
 			stdout,
