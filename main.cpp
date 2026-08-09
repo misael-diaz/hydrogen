@@ -47,7 +47,7 @@ void sig_handler(int signum) {
 		fprintf(
 			stdout,
 			"%s\n",
-			"sig_handler: have signaled server to stop on the next loop cycle"
+			"sig_handler: received SIGINT terminating execution normally"
 		);
 		running = 0;
 	}
@@ -163,7 +163,7 @@ int main () {
 	);
 
 	errno = 0;
-	int const fd = socket(AF_INET, SOCK_STREAM, 0);
+	int const fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
 	if (-1 == fd) {
 		if (errno) {
 			fprintf(stderr, "%s\n", strerror(errno));
@@ -254,12 +254,12 @@ int main () {
 		socklen_t len = sizeof(struct sockaddr_in);
 		rc = accept(fd, (struct sockaddr*) &client, &len);
 		if (-1 == rc) {
-			if (errno) {
+			if ((EAGAIN != errno) && (EWOULDBLOCK != errno)) {
 				fprintf(stderr, "%s\n", strerror(errno));
+				freeaddrinfo(ai);
+				_exit(1);
 			}
-			freeaddrinfo(ai);
-			_exit(1);
-		}
+		} else {
 		int sockfd = rc;
 		fprintf(
 			stdout,
@@ -303,6 +303,7 @@ int main () {
 		fprintf(stdout, "bytes: %ld\n", bytes_total);
 
 		void *data = &sockfd;
+		// FIXME: clone can return an error code and also set errno
 		pid_t pid = clone(
 			respond,
 			top_stack,
@@ -310,18 +311,20 @@ int main () {
 			data
 		);
 
+		}
+
 		errno = 0;
 		int wstatus = 0;
 		rc = waitpid(-1, &wstatus, WNOHANG);
 		if (-1 == rc) {
-			if (errno) {
+			if (ECHILD != errno) {
 				fprintf(stderr, "%s\n", strerror(errno));
+				freeaddrinfo(ai);
+				_exit(1);
 			}
-			freeaddrinfo(ai);
-			_exit(1);
 		}
 		else if (0 < rc) {
-			pid = rc;
+			pid_t pid = rc;
 			if (WIFEXITED(wstatus)) {
 				fprintf(
 					stdout,
@@ -339,7 +342,7 @@ int main () {
 				);
 			}
 		}
-
+		sleep(1); // FIXME you may want to use epoll or signals
 	}
 
 	freeaddrinfo(ai);
