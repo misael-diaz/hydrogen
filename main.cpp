@@ -406,7 +406,7 @@ int main () {
 						data
 						);
 				if (-1 == pid) {
-					// NOTE: in the future you may want to allow EAGAIN meaning that too many processes are already running we only need to wait a little longer
+					// TODO: reap childer on EAGAIN  and keep trying to create a clone in a loop until it succeeds or drop if this fails after a couple of tries
 					if (errno) {
 						fprintf(stderr, "%s\n", strerror(errno));
 					}
