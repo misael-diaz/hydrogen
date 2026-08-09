@@ -63,6 +63,15 @@ void sig_handler(int signum) {
 		request = 1;
 		return;
 	}
+	else if (SIGURG == signum) {
+		fprintf(
+			stdout,
+			"\n\n%s\n\n",
+			"sig_handler: received SIGURG: WARNING: unhandled: PANIC"
+		);
+		running = 0;
+		return;
+	}
 }
 
 __httpd_extern
@@ -94,6 +103,14 @@ int respond(void *data) {
 	errno = 0;
 	// NOTE: probably not necessary because child is not the owner of the listening socket
 	rc = sigaction(SIGIO, &sa, NULL);
+	if (-1 == rc) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		_exit(1);
+	}
+
+	rc = sigaction(SIGURG, &sa, NULL);
 	if (-1 == rc) {
 		if (errno) {
 			fprintf(stderr, "%s\n", strerror(errno));
