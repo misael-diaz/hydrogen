@@ -418,40 +418,40 @@ int main () {
 		}
 		else {
 
-		do {
+			do {
 
-			errno = 0;
-			int wstatus = 0;
-			rc = waitpid(-1, &wstatus, WNOHANG);
-			if (-1 == rc) {
-				if (ECHILD != errno) {
-					fprintf(stderr, "%s\n", strerror(errno));
-					freeaddrinfo(ai);
-					_exit(1);
+				errno = 0;
+				int wstatus = 0;
+				rc = waitpid(-1, &wstatus, WNOHANG);
+				if (-1 == rc) {
+					if (ECHILD != errno) {
+						fprintf(stderr, "%s\n", strerror(errno));
+						freeaddrinfo(ai);
+						_exit(1);
+					}
+					sleep(1);
 				}
-				sleep(1);
-			}
-			else if (0 < rc) {
-				pid_t pid = rc;
-				if (WIFEXITED(wstatus)) {
-					fprintf(
-							stdout,
-							"pid: %d status: %d\n",
-							pid,
-							WEXITSTATUS(wstatus)
-					       );
+				else if (0 < rc) {
+					pid_t pid = rc;
+					if (WIFEXITED(wstatus)) {
+						fprintf(
+								stdout,
+								"pid: %d status: %d\n",
+								pid,
+								WEXITSTATUS(wstatus)
+						       );
+					}
+					else if (WIFSIGNALED(wstatus)) {
+						fprintf(
+								stdout,
+								"pid: %d signal: %d\n",
+								pid,
+								WTERMSIG(wstatus)
+						       );
+					}
 				}
-				else if (WIFSIGNALED(wstatus)) {
-					fprintf(
-							stdout,
-							"pid: %d signal: %d\n",
-							pid,
-							WTERMSIG(wstatus)
-					       );
-				}
-			}
 
-		} while (running && !request);
+			} while (running && !request);
 
 		}
 	}
