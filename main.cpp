@@ -46,7 +46,7 @@ void sig_handler(int signum) {
 		// NOTE: the server won't stop right if it's listening for incoming connections, at the moment the call blocks and so the server is unaware of our intention to stop it, later we can improve this to make it more responsive
 		fprintf(
 			stdout,
-			"%s\n",
+			"\n\n%s\n\n",
 			"sig_handler: received SIGINT terminating execution normally"
 		);
 		running = 0;
