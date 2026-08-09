@@ -303,13 +303,22 @@ int main () {
 		fprintf(stdout, "bytes: %ld\n", bytes_total);
 
 		void *data = &sockfd;
-		// FIXME: clone can return an error code and also set errno
+
+		errno = 0;
 		pid_t pid = clone(
 			respond,
 			top_stack,
 			CLONE_PTRACE | CLONE_FILES | SIGCHLD,
 			data
 		);
+		if (-1 == pid) {
+			// NOTE: in the future you may want to allow EAGAIN meaning that too many processes are already running we only need to wait a little longer
+			if (errno) {
+				fprintf(stderr, "%s\n", strerror(errno));
+			}
+			freeaddrinfo(ai);
+			_exit(1);
+		}
 
 		}
 
