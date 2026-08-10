@@ -31,6 +31,9 @@ as published by the Free Software Foundation.
 #include <string.h>
 #include <errno.h>
 
+#define HTTP_SUCCESS_RC 0
+#define HTTP_FAILURE_RC -1
+#define HTTP_HEADER_SIZE PATH_MAX
 #define PORT 8080
 
 #ifndef __cplusplus
@@ -85,9 +88,9 @@ void HttpSignalHandler(int signum) {
 __httpd_extern
 __httpd_internal
 int HttpHeaderRead(
-		void * const head,
-		int const sockfd
+	int const sockfd
 ) {
+	char head[HTTP_HEADER_SIZE];
 	int sw = 0;
 	ssize_t ret = 0;
 	ssize_t bytes_read = 0;
@@ -183,14 +186,16 @@ int HttpRespond(void *data) {
 		_exit(1);
 	}
 
+	int *sockfd = (typeof(sockfd)) data;
+	int fd = *sockfd;
+	HttpHeaderRead(fd);
+
 	char response[] = (
 		"HTTP/1.1 200\r\n"
 		"\r\n"
 	);
 
 	errno = 0;
-	int *sockfd = (typeof(sockfd)) data;
-	int fd = *sockfd;
 	ssize_t bytes_written = write(fd, response, sizeof(response) - 1);
 	if (-1 == bytes_written) {
 		if (errno) {
@@ -345,25 +350,9 @@ int main () {
 	}
 
 	size_t const pagesize = ret;
-	size_t size_mmap = pagesize;
-	void *head = mmap(
-		NULL,
-		size_mmap,
-		PROT_READ | PROT_WRITE,
-		MAP_ANONYMOUS | MAP_PRIVATE,
-		-1,
-		0
-	);
-	if (MAP_FAILED == head) {
-		if (errno) {
-			fprintf(stderr, "%s\n", strerror(errno));
-		}
-		freeaddrinfo(ai);
-		_exit(1);
-	}
 
 	errno = 0;
-	size_t size_stack = (pagesize << 1);
+	size_t size_stack = (HTTP_HEADER_SIZE + (pagesize << 1));
 	void *stack = mmap(NULL,
 			size_stack,
 			PROT_READ | PROT_WRITE,
@@ -418,9 +407,6 @@ int main () {
 						ntohs(client.sin_port)
 				       );
 
-				// TODO: refactor header reading into a function
-				// TODO: forward the task of reading the header to the child process
-				HttpHeaderRead(head, sockfd);
 				int sw = 0;
 				void *data = &sockfd;
 
