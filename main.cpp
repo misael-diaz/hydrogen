@@ -11,7 +11,7 @@ as published by the Free Software Foundation.
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
-
+// TODO: apply naming convention to functions
 #include <linux/limits.h>
 #include <sys/types.h>
 #include <sys/socket.h>
