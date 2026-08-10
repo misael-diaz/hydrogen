@@ -527,7 +527,6 @@ int main () {
 					ntohs(client.sin_port)
 				);
 
-
 				struct ClientData client = {};
 				client.sockfd = sockfd;
 				rc = HttpResponseScheduler(top_stack, &client);
