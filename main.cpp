@@ -144,6 +144,15 @@ error_handler:
 	return HTTP_FAILURE_RC;
 }
 
+// TODO:
+// [ ] RFC9112 https://www.rfc-editor.org/info/rfc9112/#name-message-body reject requests with both Content-Length and Transfer-Enconding and close the connection.
+// [ ] A server MAY reject a request that contains a message body but not a Content-Length by responding with 411 (Length Required). https://www.rfc-editor.org/info/rfc9112/#section-6.3-5
+// [ ] Host field is required in HTTP Requests to HTTP/1.1 servers; complain by responding with a status 400 "(Bad Request)" if the Host field is missing from the request header. https://www.rfc-editor.org/info/rfc9112/#section-3.2-4
+// [ ] complain about whitespace in request-lines with a status 400 "(Bad Request)"; https://www.rfc-editor.org/info/rfc9112/#section-3.2-4
+// [ ] we can complain about too long URIs and respond with a status 414 "(URI Too Long)"; https://www.rfc-editor.org/info/rfc9112/#section-3-4
+// [ ] support HTTP GET and HEAD methods is required, see linked MDN resource for more info (talks about that even though it's about HTTP 501 Status): https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/501
+// [ ] To avoid the TCP reset problem, servers typically close a connection in stages. First, the server performs a half-close by closing only the write side of the read/write connection. The server then continues to read from the connection until it receives a corresponding close by the client, or until the server is reasonably certain that its own TCP stack has received the client's acknowledgement of the packet(s) containing the server's last response. Finally, the server fully closes the connection. https://www.rfc-editor.org/info/rfc9112/#section-9.6-10 . This is something that I will need to think about in the future, right now we read and write from the same socket that we got via accept().
+// [x] include Connection: close on the resonse because we have yet to implement persistent connections; https://www.rfc-editor.org/info/rfc9112/#name-persistence
 __httpd_extern
 __httpd_internal
 int HttpRespond(void *data) {
@@ -508,6 +517,7 @@ int main () {
 		if (request) {
 			struct sockaddr_in client = {};
 			socklen_t len = sizeof(struct sockaddr_in);
+			// TODO: tcp/ip error handling pending see "Error handling" section of `man accept` for more info
 			rc = accept(fd, (struct sockaddr*) &client, &len);
 			if (-1 == rc) {
 				if ((EAGAIN != errno) && (EWOULDBLOCK != errno)) {
