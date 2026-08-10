@@ -1,6 +1,3 @@
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
 /*
 
 sonic-httpd
@@ -11,6 +8,9 @@ This file is released under the GNU General Public License version 2 only
 as published by the Free Software Foundation.
 
 */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 
 #include <linux/limits.h>
 #include <sys/types.h>
