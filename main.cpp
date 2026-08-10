@@ -67,7 +67,8 @@ void HttpSignalHandler(int signum) {
 		fprintf(
 			stdout,
 			"\n\n%s\n\n",
-			"HttpSignalHandler: received SIGINT terminating execution normally"
+			"HttpSignalHandler: "
+			"received SIGINT terminating execution normally"
 		);
 #endif
 		running = 0;
@@ -78,7 +79,8 @@ void HttpSignalHandler(int signum) {
 		fprintf(
 			stdout,
 			"\n\n%s\n\n",
-			"HttpSignalHandler: received SIGIO due to request on listening socket"
+			"HttpSignalHandler: "
+			"received SIGIO due to request on listening socket"
 		);
 #endif
 		request = 1;
@@ -472,11 +474,11 @@ int main () {
 			else {
 				int sockfd = rc;
 				fprintf(
-						stdout,
-						"client: %s port: %d\n",
-						inet_ntoa(client.sin_addr),
-						ntohs(client.sin_port)
-				       );
+					stdout,
+					"client: %s port: %d\n",
+					inet_ntoa(client.sin_addr),
+					ntohs(client.sin_port)
+				);
 
 
 				struct ClientData client = {};
@@ -506,19 +508,19 @@ int main () {
 					pid_t pid = rc;
 					if (WIFEXITED(wstatus)) {
 						fprintf(
-								stdout,
-								"pid: %d status: %d\n",
-								pid,
-								WEXITSTATUS(wstatus)
-						       );
+							stdout,
+							"pid: %d status: %d\n",
+							pid,
+							WEXITSTATUS(wstatus)
+						);
 					}
 					else if (WIFSIGNALED(wstatus)) {
 						fprintf(
-								stdout,
-								"pid: %d signal: %d\n",
-								pid,
-								WTERMSIG(wstatus)
-						       );
+							stdout,
+							"pid: %d signal: %d\n",
+							pid,
+							WTERMSIG(wstatus)
+						);
 					}
 				}
 
