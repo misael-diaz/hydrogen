@@ -253,7 +253,7 @@ int HttpResponseScheduler(
 			}
 			else {
 				fprintf(
-					stdout,
+					stderr,
 					"%s\n",
 					"HttpResponseScheduler: "
 					"WARNING: "
@@ -305,19 +305,19 @@ int HttpDowntimeProcessReaper(void) {
 			pid_t pid = rc;
 			if (WIFEXITED(wstatus)) {
 				fprintf(
-						stdout,
-						"pid: %d status: %d\n",
-						pid,
-						WEXITSTATUS(wstatus)
-				       );
+					stdout,
+					"pid: %d status: %d\n",
+					pid,
+					WEXITSTATUS(wstatus)
+				);
 			}
 			else if (WIFSIGNALED(wstatus)) {
 				fprintf(
-						stdout,
-						"pid: %d signal: %d\n",
-						pid,
-						WTERMSIG(wstatus)
-				       );
+					stdout,
+					"pid: %d signal: %d\n",
+					pid,
+					WTERMSIG(wstatus)
+				);
 			}
 		}
 
