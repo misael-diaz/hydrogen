@@ -48,6 +48,18 @@ static int request = 0;
 static int running = 0;
 
 __httpd_extern
+struct ClientData {
+	int sockfd;
+	char _pad[4];
+};
+
+#ifndef __cplusplus
+_Static_assert(8 == sizeof(struct ClientData));
+#else
+static_assert(8 == sizeof(struct ClientData));
+#endif
+
+__httpd_extern
 __httpd_internal
 void HttpSignalHandler(int signum) {
 	if (SIGINT == signum) {
@@ -134,6 +146,15 @@ error_handler:
 __httpd_extern
 __httpd_internal
 int HttpRespond(void *data) {
+	// TODO: we probably want to clear define this later, so we should only allocate
+	char response[] = (
+		"HTTP/1.1 200\r\n"
+		"\r\n"
+	);
+
+	ssize_t bytes_written = 0;
+	struct ClientData *client = (typeof(client)) data;
+	int fd = client->sockfd;
 
 	// NOTE: the child process inherits the signal table from the parent so we need to set SIGINT to its default action (does not affect the parent process (i.e. the http-server)
 	struct sigaction sa = {};
@@ -145,7 +166,7 @@ int HttpRespond(void *data) {
 		if (errno) {
 			fprintf(stderr, "%s\n", strerror(errno));
 		}
-		_exit(1);
+		goto error_handler;
 	}
 	sa.sa_flags = 0;
 
@@ -155,7 +176,7 @@ int HttpRespond(void *data) {
 		if (errno) {
 			fprintf(stderr, "%s\n", strerror(errno));
 		}
-		_exit(1);
+		goto error_handler;
 	}
 
 	errno = 0;
@@ -165,7 +186,7 @@ int HttpRespond(void *data) {
 		if (errno) {
 			fprintf(stderr, "%s\n", strerror(errno));
 		}
-		_exit(1);
+		goto error_handler;
 	}
 
 	rc = sigaction(SIGURG, &sa, NULL);
@@ -173,7 +194,7 @@ int HttpRespond(void *data) {
 		if (errno) {
 			fprintf(stderr, "%s\n", strerror(errno));
 		}
-		_exit(1);
+		goto error_handler;
 	}
 
 	errno = 0;
@@ -183,29 +204,79 @@ int HttpRespond(void *data) {
 		if (errno) {
 			fprintf(stderr, "%s\n", strerror(errno));
 		}
-		_exit(1);
+		goto error_handler;
 	}
 
-	int *sockfd = (typeof(sockfd)) data;
-	int fd = *sockfd;
-	HttpHeaderRead(fd);
-
-	char response[] = (
-		"HTTP/1.1 200\r\n"
-		"\r\n"
-	);
+	rc = HttpHeaderRead(fd);
+	if (-1 == rc) {
+		fprintf(stderr, "%s\n", "HttpHeaderRead: read header failed");
+		goto error_handler;
+	}
 
 	errno = 0;
-	ssize_t bytes_written = write(fd, response, sizeof(response) - 1);
+	bytes_written = write(fd, response, sizeof(response) - 1);
 	if (-1 == bytes_written) {
 		if (errno) {
 			fprintf(stderr, "%s\n", strerror(errno));
 		}
-		_exit(1);
+		goto error_handler;
 	}
 
 	close(fd);
-	return 0;
+	return HTTP_SUCCESS_RC;
+error_handler:
+	close(fd);
+	return HTTP_FAILURE_RC;
+}
+
+__httpd_extern
+__httpd_internal
+int HttpResponseScheduler(
+		void *top_stack,
+		void *data
+) {
+	int rc = 0;
+	int sw = 0;
+	do {
+		errno = 0;
+		pid_t pid = clone(
+				HttpRespond,
+				top_stack,
+				CLONE_PTRACE | CLONE_FILES | SIGCHLD,
+				data
+				);
+		if (-1 == pid) {
+			if (EAGAIN != errno) {
+				fprintf(stderr, "%s\n", strerror(errno));
+				goto error_handler;
+			}
+			else {
+				fprintf(stdout, "%s\n", "WARNING: too many child processes trying again");
+				errno = 0;
+				rc = waitpid(-1, NULL, WNOHANG);
+				if (-1 == rc) {
+					if ((EINTR != errno) && (ECHILD != errno)) {
+						fprintf(stderr, "%s\n", strerror(errno));
+						goto error_handler;
+					}
+					else {
+						// we were interrupted or there are now no child processes so we should try to again
+						sw = 1;
+					}
+				}
+				else {
+					sw = 1;
+				}
+			}
+		}
+		else {
+			sw = 0;
+		}
+	} while (running && sw);
+
+	return HTTP_SUCCESS_RC;
+error_handler:
+	return HTTP_FAILURE_RC;
 }
 
 int main () {
@@ -407,48 +478,14 @@ int main () {
 						ntohs(client.sin_port)
 				       );
 
-				int sw = 0;
-				void *data = &sockfd;
 
-				// TODO: refactor task forwarding into a function
-				do {
-					errno = 0;
-					pid_t pid = clone(
-							HttpRespond,
-							top_stack,
-							CLONE_PTRACE | CLONE_FILES | SIGCHLD,
-							data
-							);
-					if (-1 == pid) {
-						if (EAGAIN != errno) {
-							fprintf(stderr, "%s\n", strerror(errno));
-							freeaddrinfo(ai);
-							_exit(1);
-						}
-						else {
-							fprintf(stdout, "%s\n", "WARNING: too many child processes trying again");
-							errno = 0;
-							rc = waitpid(-1, NULL, WNOHANG);
-							if (-1 == rc) {
-								if ((EINTR != errno) && (ECHILD != errno)) {
-									fprintf(stderr, "%s\n", strerror(errno));
-									freeaddrinfo(ai);
-									_exit(1);
-								}
-								else {
-									// we were interrupted or there are now no child processes so we should try to again
-									sw = 1;
-								}
-							}
-							else {
-								sw = 1;
-							}
-						}
-					}
-					else {
-						sw = 0;
-					}
-				} while (running && sw);
+				struct ClientData client = {};
+				client.sockfd = sockfd;
+				rc = HttpResponseScheduler(top_stack, &client);
+				if (HTTP_FAILURE_RC == rc) {
+					freeaddrinfo(ai);
+					_exit(1);
+				}
 			}
 		}
 		else {
