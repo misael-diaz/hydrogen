@@ -149,7 +149,7 @@ __httpd_internal
 int HttpRespond(void *data) {
 	// TODO: we probably want to clear define this later, so we should only allocate
 	char response[] = (
-		"HTTP/1.1 200\r\n"
+		"HTTP/1.1 200 \r\n"
 		"\r\n"
 	);
 
