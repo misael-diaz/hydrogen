@@ -33,16 +33,17 @@ as published by the Free Software Foundation.
 
 #define HTTP_SUCCESS_RC 0
 #define HTTP_FAILURE_RC -1
-#define HTTP_HEADER_SIZE PATH_MAX
 #define HTTP_LISTEN_PORT 8080
+#define HTTP_HEADER_SIZE PATH_MAX
 
+// NOTE: this is how we disable function name mangling when compiling with a C++ compiler
 #ifndef __cplusplus
 #define __httpd_extern
 #else
 #define __httpd_extern extern "C"
 #endif
 
-#define __httpd_internal __attribute__ ((visibility("hidden")))
+#define __httpd_internal __attribute__((visibility("hidden")))
 
 static int request = 0;
 static int running = 0;
