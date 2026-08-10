@@ -281,6 +281,48 @@ error_handler:
 	return HTTP_FAILURE_RC;
 }
 
+__httpd_extern
+__httpd_internal
+int HttpDowntimeProcessReaper(void) {
+	int rc = 0;
+	do {
+		errno = 0;
+		int wstatus = 0;
+		rc = waitpid(-1, &wstatus, WNOHANG);
+		if (-1 == rc) {
+			if (ECHILD != errno) {
+				fprintf(stderr, "%s\n", strerror(errno));
+				goto error_handler;
+			}
+			sleep(1);
+		}
+		else if (0 < rc) {
+			pid_t pid = rc;
+			if (WIFEXITED(wstatus)) {
+				fprintf(
+						stdout,
+						"pid: %d status: %d\n",
+						pid,
+						WEXITSTATUS(wstatus)
+				       );
+			}
+			else if (WIFSIGNALED(wstatus)) {
+				fprintf(
+						stdout,
+						"pid: %d signal: %d\n",
+						pid,
+						WTERMSIG(wstatus)
+				       );
+			}
+		}
+
+	} while (running && !request);
+
+	return HTTP_SUCCESS_RC;
+error_handler:
+	return HTTP_FAILURE_RC;
+}
+
 int main () {
 	errno = 0;
 	char hostname[PATH_MAX];
@@ -491,40 +533,11 @@ int main () {
 			}
 		}
 		else {
-			// TODO: refactor child reaping into a function
-			do {
-				errno = 0;
-				int wstatus = 0;
-				rc = waitpid(-1, &wstatus, WNOHANG);
-				if (-1 == rc) {
-					if (ECHILD != errno) {
-						fprintf(stderr, "%s\n", strerror(errno));
-						freeaddrinfo(ai);
-						_exit(1);
-					}
-					sleep(1);
-				}
-				else if (0 < rc) {
-					pid_t pid = rc;
-					if (WIFEXITED(wstatus)) {
-						fprintf(
-							stdout,
-							"pid: %d status: %d\n",
-							pid,
-							WEXITSTATUS(wstatus)
-						);
-					}
-					else if (WIFSIGNALED(wstatus)) {
-						fprintf(
-							stdout,
-							"pid: %d signal: %d\n",
-							pid,
-							WTERMSIG(wstatus)
-						);
-					}
-				}
-
-			} while (running && !request);
+			rc = HttpDowntimeProcessReaper();
+			if (HTTP_FAILURE_RC == rc) {
+				freeaddrinfo(ai);
+				_exit(1);
+			}
 		}
 	}
 
