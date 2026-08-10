@@ -362,6 +362,7 @@ int main () {
 						ntohs(client.sin_port)
 				       );
 
+				// TODO: forward the task of reading the header to the child process
 				int sw = 0;
 				ssize_t bytes_read = 0;
 				ssize_t bytes_total = 0;
