@@ -151,6 +151,7 @@ int HttpRespond(void *data) {
 	char response[] = (
 		"HTTP/1.1 200 \r\n"
 		"Content-Length: 0\r\n"
+		"Connection: close\r\n"
 		"\r\n"
 	);
 
