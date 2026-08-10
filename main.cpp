@@ -43,12 +43,12 @@ static int request = 0;
 static int running = 0;
 
 __httpd_extern
-void sig_handler(int signum) {
+void HttpSignalHandler(int signum) {
 	if (SIGINT == signum) {
 		fprintf(
 			stdout,
 			"\n\n%s\n\n",
-			"sig_handler: received SIGINT terminating execution normally"
+			"HttpSignalHandler: received SIGINT terminating execution normally"
 		);
 		running = 0;
 		return;
@@ -57,7 +57,7 @@ void sig_handler(int signum) {
 		fprintf(
 			stdout,
 			"\n\n%s\n\n",
-			"sig_handler: received SIGIO due to request on listening socket"
+			"HttpSignalHandler: received SIGIO due to request on listening socket"
 		);
 		request = 1;
 		return;
@@ -66,7 +66,7 @@ void sig_handler(int signum) {
 		fprintf(
 			stdout,
 			"\n\n%s\n\n",
-			"sig_handler: received SIGURG: WARNING: unhandled: PANIC"
+			"HttpSignalHandler: received SIGURG: WARNING: unhandled: PANIC"
 		);
 		running = 0;
 		return;
@@ -159,7 +159,7 @@ int main () {
 	}
 
 	struct sigaction sa = {};
-	sa.sa_handler = sig_handler;
+	sa.sa_handler = HttpSignalHandler;
 	errno = 0;
 	rc = sigemptyset(&sa.sa_mask);
 	if (-1 == rc) {
