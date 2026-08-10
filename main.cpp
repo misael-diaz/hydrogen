@@ -11,7 +11,7 @@ as published by the Free Software Foundation.
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
-// TODO: apply naming convention to functions
+
 #include <linux/limits.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -74,7 +74,7 @@ void HttpSignalHandler(int signum) {
 }
 
 __httpd_extern
-int respond(void *data) {
+int HttpRespond(void *data) {
 
 	// NOTE: the child process inherits the signal table from the parent so we need to set SIGINT to its default action (does not affect the parent process (i.e. the http-server)
 	struct sigaction sa = {};
@@ -405,7 +405,7 @@ int main () {
 				do {
 					errno = 0;
 					pid_t pid = clone(
-							respond,
+							HttpRespond,
 							top_stack,
 							CLONE_PTRACE | CLONE_FILES | SIGCHLD,
 							data
