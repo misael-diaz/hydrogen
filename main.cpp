@@ -400,7 +400,6 @@ int main () {
 				void *data = &sockfd;
 
 				do {
-
 					errno = 0;
 					pid_t pid = clone(
 							respond,
@@ -437,9 +436,7 @@ int main () {
 					else {
 						sw = 0;
 					}
-
 				} while (running && sw);
-
 			}
 		}
 		else {
