@@ -242,18 +242,24 @@ int HttpResponseScheduler(
 	do {
 		errno = 0;
 		pid_t pid = clone(
-				HttpRespond,
-				top_stack,
-				CLONE_PTRACE | CLONE_FILES | SIGCHLD,
-				data
-				);
+			HttpRespond,
+			top_stack,
+			CLONE_PTRACE | CLONE_FILES | SIGCHLD,
+			data
+		);
 		if (-1 == pid) {
 			if (EAGAIN != errno) {
 				fprintf(stderr, "%s\n", strerror(errno));
 				goto error_handler;
 			}
 			else {
-				fprintf(stdout, "%s\n", "WARNING: too many child processes trying again");
+				fprintf(
+					stdout,
+					"%s\n",
+					"HttpResponseScheduler: "
+					"WARNING: "
+					"too many child processes trying again"
+				);
 				errno = 0;
 				rc = waitpid(-1, NULL, WNOHANG);
 				if (-1 == rc) {
