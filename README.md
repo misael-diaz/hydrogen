@@ -18,7 +18,7 @@ Sonic Speed HTTP Server
 Build the server from source code with GCC:
 
 ```sh
-gcc -Wall -Wextra -Wformat -g -gdwarf-4 -O0 main.cpp -o sonic-httpd.bin
+gcc -DDEVBUILD=1 -Wall -Wextra -Wformat -g -gdwarf-4 -O0 main.cpp -o sonic-httpd.bin
 ```
 
 ## Run
