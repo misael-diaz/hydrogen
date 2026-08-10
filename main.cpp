@@ -101,9 +101,7 @@ void HttpSignalHandler(int signum) {
 
 __httpd_extern
 __httpd_internal
-int HttpHeaderRead(
-	int const sockfd
-) {
+int HttpHeaderRead(int const sockfd) {
 	char head[HTTP_HEADER_SIZE];
 	int sw = 0;
 	ssize_t ret = 0;
