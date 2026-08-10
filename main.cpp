@@ -401,42 +401,42 @@ int main () {
 
 				do {
 
-				errno = 0;
-				pid_t pid = clone(
-						respond,
-						top_stack,
-						CLONE_PTRACE | CLONE_FILES | SIGCHLD,
-						data
-						);
-				if (-1 == pid) {
-					if (EAGAIN != errno) {
-						fprintf(stderr, "%s\n", strerror(errno));
-						freeaddrinfo(ai);
-						_exit(1);
-					}
-					else {
-						fprintf(stdout, "%s\n", "WARNING: too many child processes trying again");
-						errno = 0;
-						rc = waitpid(-1, NULL, WNOHANG);
-						if (-1 == rc) {
-							if ((EINTR != errno) && (ECHILD != errno)) {
-								fprintf(stderr, "%s\n", strerror(errno));
-								freeaddrinfo(ai);
-								_exit(1);
+					errno = 0;
+					pid_t pid = clone(
+							respond,
+							top_stack,
+							CLONE_PTRACE | CLONE_FILES | SIGCHLD,
+							data
+							);
+					if (-1 == pid) {
+						if (EAGAIN != errno) {
+							fprintf(stderr, "%s\n", strerror(errno));
+							freeaddrinfo(ai);
+							_exit(1);
+						}
+						else {
+							fprintf(stdout, "%s\n", "WARNING: too many child processes trying again");
+							errno = 0;
+							rc = waitpid(-1, NULL, WNOHANG);
+							if (-1 == rc) {
+								if ((EINTR != errno) && (ECHILD != errno)) {
+									fprintf(stderr, "%s\n", strerror(errno));
+									freeaddrinfo(ai);
+									_exit(1);
+								}
+								else {
+									// we were interrupted or there are now no child processes so we should try to again
+									sw = 1;
+								}
 							}
 							else {
-								// we were interrupted or there are now no child processes so we should try to again
 								sw = 1;
 							}
 						}
-						else {
-							sw = 1;
-						}
 					}
-				}
-				else {
-					sw = 0;
-				}
+					else {
+						sw = 0;
+					}
 
 				} while (running && sw);
 
