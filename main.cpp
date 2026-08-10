@@ -362,6 +362,7 @@ int main () {
 						ntohs(client.sin_port)
 				       );
 
+				// TODO: refactor header reading into a function
 				// TODO: forward the task of reading the header to the child process
 				int sw = 0;
 				ssize_t bytes_read = 0;
@@ -400,6 +401,7 @@ int main () {
 				sw = 0;
 				void *data = &sockfd;
 
+				// TODO: refactor task forwarding into a function
 				do {
 					errno = 0;
 					pid_t pid = clone(
@@ -441,6 +443,7 @@ int main () {
 			}
 		}
 		else {
+			// TODO: refactor child reaping into a function
 			do {
 				errno = 0;
 				int wstatus = 0;
