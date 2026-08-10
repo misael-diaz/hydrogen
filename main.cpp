@@ -34,7 +34,7 @@ as published by the Free Software Foundation.
 #define HTTP_SUCCESS_RC 0
 #define HTTP_FAILURE_RC -1
 #define HTTP_HEADER_SIZE PATH_MAX
-#define PORT 8080
+#define HTTP_LISTEN_PORT 8080
 
 #ifndef __cplusplus
 #define __httpd_extern
@@ -390,7 +390,7 @@ int main () {
 		_exit(1);
 	}
 	struct sockaddr_in *sin = (typeof(sin)) ai->ai_addr;
-	sin->sin_port = htons(PORT);
+	sin->sin_port = htons(HTTP_LISTEN_PORT);
 	fprintf(
 		stdout,
 		"host: %s port: %d\n",
