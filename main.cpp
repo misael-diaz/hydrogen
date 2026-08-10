@@ -396,7 +396,10 @@ int main () {
 				fprintf(stdout, "%s", (char*) head);
 				fprintf(stdout, "bytes: %ld\n", bytes_total);
 
+				sw = 0;
 				void *data = &sockfd;
+
+				do {
 
 				errno = 0;
 				pid_t pid = clone(
@@ -406,13 +409,36 @@ int main () {
 						data
 						);
 				if (-1 == pid) {
-					// TODO: reap childer on EAGAIN  and keep trying to create a clone in a loop until it succeeds or drop if this fails after a couple of tries
-					if (errno) {
+					if (EAGAIN != errno) {
 						fprintf(stderr, "%s\n", strerror(errno));
+						freeaddrinfo(ai);
+						_exit(1);
 					}
-					freeaddrinfo(ai);
-					_exit(1);
+					else {
+						fprintf(stdout, "%s\n", "WARNING: too many child processes trying again");
+						errno = 0;
+						rc = waitpid(-1, NULL, WNOHANG);
+						if (-1 == rc) {
+							if ((EINTR != errno) && (ECHILD != errno)) {
+								fprintf(stderr, "%s\n", strerror(errno));
+								freeaddrinfo(ai);
+								_exit(1);
+							}
+							else {
+								// we were interrupted or there are now no child processes so we should try to again
+								sw = 1;
+							}
+						}
+						else {
+							sw = 1;
+						}
+					}
 				}
+				else {
+					sw = 0;
+				}
+
+				} while (running && sw);
 
 			}
 		}
