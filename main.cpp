@@ -39,41 +39,97 @@ as published by the Free Software Foundation.
 #define __httpd_extern extern "C"
 #endif
 
+#define __httpd_internal __attribute__ ((visibility("hidden")))
+
 static int request = 0;
 static int running = 0;
 
 __httpd_extern
+__httpd_internal
 void HttpSignalHandler(int signum) {
 	if (SIGINT == signum) {
+#if DEVBUILD
 		fprintf(
 			stdout,
 			"\n\n%s\n\n",
 			"HttpSignalHandler: received SIGINT terminating execution normally"
 		);
+#endif
 		running = 0;
 		return;
 	}
 	else if (SIGIO == signum) {
+#if DEVBUILD
 		fprintf(
 			stdout,
 			"\n\n%s\n\n",
 			"HttpSignalHandler: received SIGIO due to request on listening socket"
 		);
+#endif
 		request = 1;
 		return;
 	}
 	else if (SIGURG == signum) {
+#if DEVBUILD
 		fprintf(
 			stdout,
 			"\n\n%s\n\n",
 			"HttpSignalHandler: received SIGURG: WARNING: unhandled: PANIC"
 		);
+#endif
 		running = 0;
 		return;
 	}
 }
 
 __httpd_extern
+__httpd_internal
+int HttpHeaderRead(
+		void * const head,
+		int const sockfd
+) {
+	int sw = 0;
+	ssize_t ret = 0;
+	ssize_t bytes_read = 0;
+	ssize_t bytes_total = 0;
+	size_t const chunk = 16;
+	char *p = (typeof(p)) head;
+	do {
+		ret = read(sockfd, p, chunk);
+		if (-1 == ret) {
+			if (EINTR != errno) {
+				goto error_handler;
+			}
+			sw = 1;
+		}
+		else {
+			bytes_read = ret;
+			bytes_total += bytes_read;
+			p += bytes_read;
+			if (!bytes_read) {
+				sw = 0;
+			}
+			else if (chunk != bytes_read)
+				sw = 0;
+			else {
+				sw = 1;
+			}
+		}
+	} while (sw);
+
+#if DEVBUILD
+	fprintf(stdout, "%s\n", "request header:");
+	fprintf(stdout, "%s", (char*) head);
+	fprintf(stdout, "bytes: %ld\n", bytes_total);
+#endif
+	return HTTP_SUCCESS_RC;
+error_handler:
+	fprintf(stderr, "%s\n", strerror(errno));
+	return HTTP_FAILURE_RC;
+}
+
+__httpd_extern
+__httpd_internal
 int HttpRespond(void *data) {
 
 	// NOTE: the child process inherits the signal table from the parent so we need to set SIGINT to its default action (does not affect the parent process (i.e. the http-server)
@@ -364,41 +420,8 @@ int main () {
 
 				// TODO: refactor header reading into a function
 				// TODO: forward the task of reading the header to the child process
+				HttpHeaderRead(head, sockfd);
 				int sw = 0;
-				ssize_t bytes_read = 0;
-				ssize_t bytes_total = 0;
-				size_t const chunk = 16;
-				char *p = (typeof(p)) head;
-				do {
-					ret = read(sockfd, p, chunk);
-					if (-1 == ret) {
-						if (EINTR != errno) {
-							fprintf(stderr, "%s\n", strerror(errno));
-							freeaddrinfo(ai);
-							_exit(1);
-						}
-						sw = 1;
-					}
-					else {
-						bytes_read = ret;
-						bytes_total += bytes_read;
-						p += bytes_read;
-						if (!bytes_read) {
-							sw = 0;
-						}
-						else if (chunk != bytes_read)
-							sw = 0;
-						else {
-							sw = 1;
-						}
-					}
-				} while (sw);
-
-				fprintf(stdout, "%s\n", "request header:");
-				fprintf(stdout, "%s", (char*) head);
-				fprintf(stdout, "bytes: %ld\n", bytes_total);
-
-				sw = 0;
 				void *data = &sockfd;
 
 				// TODO: refactor task forwarding into a function
