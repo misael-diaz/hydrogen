@@ -40,6 +40,16 @@ curl http://127.0.1.1:8080 --output -
 
 for the time being we need to pass the `--output -` argument to `curl` so that it won't complain about displaying binary output on the console.
 
+## Debugging
+
+It is useful to follow the child process instead of the parent process (the server):
+
+```gdb
+set follow-fork-mode child
+```
+
+and even though the server uses `clone` instead of `fork` to create the child processes this works nicely. It is important to set the breakpoints ahead of hitting run.
+
 ## References:
 
 https://www.rfc-editor.org/info/rfc9112/#message.body
