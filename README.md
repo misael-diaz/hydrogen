@@ -12,6 +12,7 @@ Sonic Speed HTTP Server
 - **signal hanlding**: the server halts execution gracefully upon signal interrupts by registration of the respective signal handler. The child processes are setup to respond to the signal in the default way to avoid confusion (interrupting a child process should not affect the server, for instance see `man clone`).
 - **non-blocking**: the server is now able to respond to incoming connections in non-blocking mode. Still need to work on this so that the server is not put to sleep to keep the CPU usage low when there are no connections. Strongly considering to register a signal handler for `SIGIO`, I think it would be an interesting solution to implement because I have seen polling on the `xserver`.
 - **async requests**: server responds to incoming requests asynchronously by means of signal handlers. The children still process the request in the usual way which is the right call.
+- **response timestamp**: includes the response timestamp according to [RFC9110](https://www.rfc-editor.org/info/rfc9110/#name-date-time-formats). Setting the child process timezone environment variable to zero UTC does the trick to respond with the localtime in GMT. Linux date and time utilities were used to implement this.
 
 ## Build
 
