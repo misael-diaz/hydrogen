@@ -22,6 +22,7 @@ as published by the Free Software Foundation.
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <time.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <signal.h>
@@ -34,7 +35,7 @@ as published by the Free Software Foundation.
 #define HTTP_SUCCESS_RC 0
 #define HTTP_FAILURE_RC -1
 #define HTTP_LISTEN_PORT 8080
-#define HTTP_HEADER_SIZE PATH_MAX
+#define HTTP_HEADER_SIZE (PATH_MAX)
 
 // NOTE: this is how we disable function name mangling when compiling with a C++ compiler
 #ifndef __cplusplus
@@ -156,24 +157,74 @@ error_handler:
 __httpd_extern
 __httpd_internal
 int HttpRespond(void *data) {
+	struct ClientData *client = (typeof(client)) data;
+	int fd = client->sockfd;
+
+	char CRLF[] = "\r\n";
+
 	// TODO: we probably want to clear define this later, so we should only allocate
-	char response[] = (
+	char response[HTTP_HEADER_SIZE] = (
 		"HTTP/1.1 200 \r\n"
 		"Content-Length: 0\r\n"
 		"Connection: close\r\n"
-		"\r\n"
 	);
 
+	errno = 0;
+	// NOTE: sets the timezone to GMT for the response according to RFC9110
+	int rc = setenv("TZ", "UTC+0:00:00", 1);
+	if (-1 == rc) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		close(fd);
+		return HTTP_FAILURE_RC;
+	}
+
+	errno = 0;
+	rc = time(NULL);
+	if (-1 == rc) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		close(fd);
+		return HTTP_FAILURE_RC;
+	}
+	time_t t = rc;
+
+	errno = 0;
+	struct tm tm = {};
+	struct tm *tp = localtime_r(&t, &tm);
+	if (!tp) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		close(fd);
+		return HTTP_FAILURE_RC;
+	}
+
+	char format_timestamp[] = "Date: %a, %d %b %Y %I %H:%M:%S GMT";
+	char timestamp[256];
+
+	// NOTE: returns bytes but excludes the terminating null byte and in this case we know that if this function returns zero bytes that we cannot use the timestamp; at this point in development we simply close the connection
+	size_t bytes_time = strftime(timestamp, sizeof(timestamp), format_timestamp, &tm);
+	if (!bytes_time) {
+		close(fd);
+		return HTTP_FAILURE_RC;
+	}
+
+	strncat(response, timestamp, bytes_time);
+	strncat(response, CRLF, sizeof(CRLF) - 1);
+	// NOTE: for now this is the end of the response and so we add the final CRLF
+	strncat(response, CRLF, sizeof(CRLF) - 1);
+
 	ssize_t bytes_written = 0;
-	struct ClientData *client = (typeof(client)) data;
-	int fd = client->sockfd;
 
 	// NOTE: the child process inherits the signal table from the parent so we need to set SIGINT to its default action (does not affect the parent process (i.e. the http-server)
 	struct sigaction sa = {};
 	sa.sa_handler = SIG_DFL;
 
 	errno = 0;
-	int rc = sigemptyset(&sa.sa_mask);
+	rc = sigemptyset(&sa.sa_mask);
 	if (-1 == rc) {
 		if (errno) {
 			fprintf(stderr, "%s\n", strerror(errno));
@@ -225,8 +276,9 @@ int HttpRespond(void *data) {
 		goto error_handler;
 	}
 
+	// NOTE: we are effectively excluding the terminating null byte from the response
 	errno = 0;
-	bytes_written = write(fd, response, sizeof(response) - 1);
+	bytes_written = write(fd, response, strlen(response));
 	if (-1 == bytes_written) {
 		if (errno) {
 			fprintf(stderr, "%s\n", strerror(errno));
@@ -484,7 +536,7 @@ int main () {
 	size_t const pagesize = ret;
 
 	errno = 0;
-	size_t size_stack = (HTTP_HEADER_SIZE + (pagesize << 1));
+	size_t const size_stack = (((HTTP_HEADER_SIZE) + (pagesize)) << 1);
 	void *stack = mmap(NULL,
 			size_stack,
 			PROT_READ | PROT_WRITE,
