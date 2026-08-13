@@ -84,6 +84,16 @@ struct ClientData {
 	char _pad[4];
 };
 
+__httpd_extern
+struct HttpResponse {
+	char response[HTTP_HEADER_SIZE];
+	size_t offset_header;
+	size_t offset_content;
+	size_t size_header;
+	size_t size_content;
+	size_t size;
+};
+
 #ifndef __cplusplus
 _Static_assert(8 == sizeof(struct ClientData));
 #else
@@ -197,17 +207,15 @@ int HttpHeaderFindMethod(
 __httpd_extern
 __httpd_internal
 int HttpRespondGetFavicon(
-	char * const response,
-	size_t * const bytes_response
+	struct HttpResponse * const DataResponse
 ) {
 	int rc = 0;
 	int fd = -1;
 	ssize_t ret = -1;
-	size_t len = 0;
 	size_t len_written = 0;
 	size_t bytes_written = 0;
+	size_t bytes_contentLength = 0;
 	size_t bytes_favicon = 0;
-	size_t len_response = 0;
 	size_t avail_response = 0;
 	size_t size_response = 0;
 	size_t size_mmap = 0;
@@ -215,7 +223,6 @@ int HttpRespondGetFavicon(
 	size_t pagemask = 0;
 	void *map = NULL;
 	char *img = NULL;
-	char *content = NULL;
 	char content_length[HTTP_CONTENT_LENGTH_SIZE];
 	struct stat st = {};
 
@@ -279,12 +286,10 @@ int HttpRespondGetFavicon(
 		goto error_handler;
 	}
 
-	len_written = strlen(content_length);
-	bytes_written = len_written;
+	bytes_contentLength = bytes_written = len_written = strlen(content_length);
 
-	len_response = strlen(response);
-	size_response = 1 + len_response;
-	if (HTTP_HEADER_SIZE < size_response) {
+	DataResponse->size_header = strlen(DataResponse->response);
+	if (HTTP_HEADER_SIZE < DataResponse->size_header) {
 		fprintf(stderr, "HttpRespondGetFavicon: %s\n", "error header size");
 		goto error_handler;
 	}
@@ -296,10 +301,9 @@ int HttpRespondGetFavicon(
 		goto error_handler;
 	}
 
-	memcpy(response + len_response, content_length, bytes_written);
-	// NOTE: we include the null byte because we intend to keep it at the end of the response for the caller because it expects it and we use `len_response` to know where the image data begins
-	size_response += bytes_written;
-	len_response = size_response - 1;
+	memcpy(DataResponse->response + DataResponse->size_header, content_length, bytes_contentLength);
+	DataResponse->size_header = strlen(DataResponse->response);
+	DataResponse->offset_content = DataResponse->size_header;
 
 	// NOTE: as above here we add the content and so we must be sure to have enough room for the content
 	size_mmap = ((bytes_favicon + pagemask) & (~pagemask));
@@ -320,7 +324,7 @@ int HttpRespondGetFavicon(
 		goto error_handler;
 	}
 
-	if (HTTP_HEADER_SIZE < size_response) {
+	if (HTTP_HEADER_SIZE < DataResponse->size_header) {
 		fprintf(stderr, "HttpRespondGetFavicon: %s\n", "error content size");
 		goto error_handler;
 	}
@@ -333,14 +337,10 @@ int HttpRespondGetFavicon(
 		goto error_handler;
 	}
 
-	// NOTE: we intend to overwrite the null character that strncat appended and so we expect no changes to `len_response` between calling `strncat` and `memcpy` and we append a null byte for the caller because it expects it
-	content = response + len_response;
-	memcpy(content, img, bytes_favicon);
-	len = bytes_favicon;
-	content[len] = 0;
+	memcpy(DataResponse->response + DataResponse->offset_content, img, bytes_favicon);
+	DataResponse->size_content = bytes_favicon;
+	DataResponse->size = DataResponse->size_header + DataResponse->size_content;
 
-	len = len_response + bytes_favicon;
-	*bytes_response = len;
 	rc = HTTP_SUCCESS_RC;
 	return rc;
 error_handler:
@@ -375,7 +375,6 @@ int HttpRespond(void *data) {
 	struct ClientData *client = (typeof(client)) data;
 	int fd = client->sockfd;
 	enum HttpMethod method = HTTP_METHOD_UNKNOWN;
-	size_t bytes_response = 0;
 
 	char const *URI = NULL;
 	char head[HTTP_HEADER_SIZE];
@@ -387,6 +386,9 @@ int HttpRespond(void *data) {
 		"HTTP/1.1 200 \r\n"
 		"Connection: close\r\n"
 	);
+
+	struct HttpResponse DataResponse = {};
+	memcpy(DataResponse.response, response, sizeof(response));
 
 	errno = 0;
 	// NOTE: sets the timezone to GMT for the response according to RFC9110
@@ -431,8 +433,8 @@ int HttpRespond(void *data) {
 		return HTTP_FAILURE_RC;
 	}
 
-	strncat(response, timestamp, bytes_time);
-	strncat(response, CRLF, sizeof(CRLF) - 1);
+	strncat(DataResponse.response, timestamp, bytes_time);
+	strncat(DataResponse.response, CRLF, sizeof(CRLF) - 1);
 
 	ssize_t bytes_written = 0;
 
@@ -510,10 +512,9 @@ int HttpRespond(void *data) {
 	}
 
 	// TODO: refactor this into the router function
-	bytes_response = 0;
 	if (HTTP_METHOD_GET == method) {
 		if (strstr(URI, "favicon")) {
-			rc = HttpRespondGetFavicon(response, &bytes_response);
+			rc = HttpRespondGetFavicon(&DataResponse);
 			if (HTTP_FAILURE_RC == rc) {
 				goto error_handler;
 			}
@@ -530,10 +531,10 @@ int HttpRespond(void *data) {
 
 	// NOTE: we are effectively excluding the terminating null byte from the response and note that this only works for pure text responses and this check will be revised in the future because it's insufficient
 	errno = 0;
-	if (!bytes_response) {
-		bytes_written = write(fd, response, strlen(response));
+	if (!DataResponse.size_content) {
+		bytes_written = write(fd, DataResponse.response, strlen(response));
 	} else {
-		bytes_written = write(fd, response, bytes_response);
+		bytes_written = write(fd, DataResponse.response, DataResponse.size);
 	}
 	if (-1 == bytes_written) {
 		if (errno) {
