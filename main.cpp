@@ -353,6 +353,12 @@ error_handler:
 }
 
 // TODO:
+// [ ] if Origin is in the request Header then the server must respond with `Access-Control-Allow-Origin: *` if that makes sense, otherwise what it is appropriate for the resource. However for images (which is just content) we can safely add that to the response header. Recommend reading (again):
+//
+// https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Access-Control-Allow-Origin
+//
+// Suggestion: check for Origin early on and enable access control if it's the favicon image for starters.
+//
 // [ ] check early about the request header size, we bail out if we cannot process it
 // [ ] check if closing the socket on errors would make the client hang (note that we are not responding just closing the connection)
 // [ ] RFC9112 https://www.rfc-editor.org/info/rfc9112/#name-message-body reject requests with both Content-Length and Transfer-Enconding and close the connection.
