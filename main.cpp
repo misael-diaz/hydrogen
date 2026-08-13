@@ -258,6 +258,8 @@ int HttpRespondGetFavicon(
 	char content_length[HTTP_CONTENT_LENGTH_SIZE];
 	struct stat st = {};
 
+	memset(content_length, 0, sizeof(content_length));
+
 	errno = 0;
 	ret = sysconf(_SC_PAGESIZE);
 	if (-1 == ret) {
