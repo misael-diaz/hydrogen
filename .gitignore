@@ -1,3 +1,6 @@
+*.html
+*.css
+*.js
 *.bin
 *.svg
 *.png
