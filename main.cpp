@@ -75,9 +75,6 @@ enum HttpMethod {
 	HTTP_METHOD_UNKNOWN = (1 << HTTP_METHOD_UNKNOWN_SHF)
 };
 
-static int request = 0;
-static int running = 0;
-
 __httpd_extern
 struct ClientData {
 	int sockfd;
@@ -89,46 +86,6 @@ _Static_assert(8 == sizeof(struct ClientData));
 #else
 static_assert(8 == sizeof(struct ClientData));
 #endif
-
-__httpd_extern
-__httpd_internal
-void HttpSignalHandler(int signum) {
-	if (SIGINT == signum) {
-#if DEVBUILD
-		fprintf(
-			stdout,
-			"\n\n%s\n\n",
-			"HttpSignalHandler: "
-			"received SIGINT terminating execution normally"
-		);
-#endif
-		running = 0;
-		return;
-	}
-	else if (SIGIO == signum) {
-#if DEVBUILD
-		fprintf(
-			stdout,
-			"\n\n%s\n\n",
-			"HttpSignalHandler: "
-			"received SIGIO due to request on listening socket"
-		);
-#endif
-		request = 1;
-		return;
-	}
-	else if (SIGURG == signum) {
-#if DEVBUILD
-		fprintf(
-			stdout,
-			"\n\n%s\n\n",
-			"HttpSignalHandler: received SIGURG: WARNING: unhandled: PANIC"
-		);
-#endif
-		running = 0;
-		return;
-	}
-}
 
 __httpd_extern
 __httpd_internal
@@ -582,6 +539,50 @@ int HttpRespond(void *data) {
 error_handler:
 	close(fd);
 	return HTTP_FAILURE_RC;
+}
+
+static int request = 0;
+static int running = 0;
+
+__httpd_extern
+__httpd_internal
+void HttpSignalHandler(int signum) 
+{
+	if (SIGINT == signum) {
+#if DEVBUILD
+		fprintf(
+			stdout,
+			"\n\n%s\n\n",
+			"HttpSignalHandler: "
+			"received SIGINT terminating execution normally"
+		);
+#endif
+		running = 0;
+		return;
+	}
+	else if (SIGIO == signum) {
+#if DEVBUILD
+		fprintf(
+			stdout,
+			"\n\n%s\n\n",
+			"HttpSignalHandler: "
+			"received SIGIO due to request on listening socket"
+		);
+#endif
+		request = 1;
+		return;
+	}
+	else if (SIGURG == signum) {
+#if DEVBUILD
+		fprintf(
+			stdout,
+			"\n\n%s\n\n",
+			"HttpSignalHandler: received SIGURG: WARNING: unhandled: PANIC"
+		);
+#endif
+		running = 0;
+		return;
+	}
 }
 
 __httpd_extern
