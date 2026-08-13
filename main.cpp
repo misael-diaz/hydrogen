@@ -276,10 +276,7 @@ int HttpRespondGetFavicon(
 	}
 
 	len_written = strlen(content_length);
-	if (len_written != bytes_written) {
-		fprintf(stderr, "HttpRespondGetFavicon: %s\n", "error size of content-length buffer");
-		goto error_handler;
-	}
+	bytes_written = len_written;
 
 	len_response = strlen(response);
 	size_response = 1 + len_response;
