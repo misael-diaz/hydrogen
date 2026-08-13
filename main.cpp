@@ -349,6 +349,7 @@ error_handler:
 }
 
 // TODO:
+// [ ] check early about the request header size, we bail out if we cannot process it
 // [ ] check if closing the socket on errors would make the client hang (note that we are not responding just closing the connection)
 // [ ] RFC9112 https://www.rfc-editor.org/info/rfc9112/#name-message-body reject requests with both Content-Length and Transfer-Enconding and close the connection.
 // [ ] A server MAY reject a request that contains a message body but not a Content-Length by responding with 411 (Length Required). https://www.rfc-editor.org/info/rfc9112/#section-6.3-5
