@@ -38,6 +38,9 @@ as published by the Free Software Foundation.
 #define HTTP_LISTEN_PORT 8080
 #define HTTP_HEADER_SIZE (PATH_MAX)
 #define HTTP_CONTENT_LENGTH_SIZE 256
+
+// TODO: consider defining a compile-time macro that stores the working-directory which could be used to provide full paths to these files; this is something to consider and easy to do
+#define HTTP_INDEX_PATH "./http/index.html"
 #define HTTP_FAVICON_PATH "./public/favicons/favicon.png"
 
 // NOTE: this is how we disable function name mangling when compiling with a C++ compiler
