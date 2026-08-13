@@ -233,6 +233,7 @@ int HttpHeaderFindMethod(
 // NOTE: this assumes that there are no more response header fields to include after this call
 // TODO: provide the response buffer size so that we know if there's enough space for the header
 // TODO: the data structure for the http response is starting to arise, we need an offset for the data and a size and a size for the header-section of the response
+// TODO: probably you want to keep a global list of files, so instead of having the child process find the file the server could do that during startup, generate the list, and grant access to the children via some suitable data structure (not global access per se)
 __httpd_extern
 __httpd_internal
 int HttpRespondGetFavicon(
