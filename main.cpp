@@ -86,12 +86,13 @@ struct ClientData {
 
 __httpd_extern
 struct HttpResponse {
-	char response[HTTP_HEADER_SIZE];
 	size_t offset_header;
 	size_t offset_content;
 	size_t size_header;
 	size_t size_content;
+	size_t size_total;
 	size_t size;
+	char response[HTTP_HEADER_SIZE];
 };
 
 #ifndef __cplusplus
