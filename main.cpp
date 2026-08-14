@@ -555,8 +555,7 @@ int HttpRespond(void *data) {
 
 	memset(head, 0, sizeof(head));
 	rc = HttpHeaderRead(head, fd);
-	// FIXME: check againt HTTP_FAILURE_RC instead
-	if (-1 == rc) {
+	if (HTTP_FAILURE_RC == rc) {
 		fprintf(stderr, "%s\n", "HttpHeaderRead: read header failed");
 		goto error_handler;
 	}
