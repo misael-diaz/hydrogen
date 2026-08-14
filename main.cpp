@@ -98,6 +98,7 @@ struct HttpResponse {
 	char response[HTTP_HEADER_SIZE];
 };
 
+// WARNING: chromium hangs when sending CORS requests (example image with crossorigin=anonymous); firefox and google chrome do not hang
 __httpd_extern
 __httpd_internal
 int HttpHeaderRead(
