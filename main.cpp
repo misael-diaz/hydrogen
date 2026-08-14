@@ -520,6 +520,12 @@ int HttpRespond(void *data) {
 				goto error_handler;
 			}
 		}
+		else if (strstr(URI, "/ HTTP/1.1")) {
+			rc = HttpRespondGetFile(&DataResponse, HTTP_INDEX_PATH);
+			if (HTTP_FAILURE_RC == rc) {
+				goto error_handler;
+			}
+		}
 		else {
 			// NOTE: generates the original default response
 			char content_length[] = (
