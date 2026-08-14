@@ -640,6 +640,7 @@ int HttpResponseScheduler(
 					else {
 						// we were interrupted or there are now no child processes so we should try to again
 						sw = 1;
+						sleep(1);
 					}
 				}
 				else {
