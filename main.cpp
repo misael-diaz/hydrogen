@@ -38,6 +38,7 @@ as published by the Free Software Foundation.
 #define HTTP_LISTEN_PORT 8080
 #define HTTP_HEADER_SIZE (PATH_MAX)
 #define HTTP_CONTENT_LENGTH_SIZE 256
+#define HTTP_SERVER_SCHEME "http"
 
 // TODO: consider defining a compile-time macro that stores the working-directory which could be used to provide full paths to these files; this is something to consider and easy to do
 #define HTTP_INDEX_PATH "./http/index.html"
@@ -81,7 +82,9 @@ enum HttpMethod {
 __httpd_extern
 struct ClientData {
 	int sockfd;
-	char _pad[4];
+	char *origin;
+	char *host;
+	char *port;
 };
 
 __httpd_extern
@@ -91,15 +94,9 @@ struct HttpResponse {
 	size_t size_header;
 	size_t size_content;
 	size_t size_total;
-	size_t size;
+	int64_t requires_cors;
 	char response[HTTP_HEADER_SIZE];
 };
-
-#ifndef __cplusplus
-_Static_assert(8 == sizeof(struct ClientData));
-#else
-static_assert(8 == sizeof(struct ClientData));
-#endif
 
 __httpd_extern
 __httpd_internal
@@ -208,12 +205,15 @@ int HttpRespondGetFile(
 	int fd = -1;
 	ssize_t ret = -1;
 	ssize_t avail = 0;
+	size_t len_CORS = 0;
 	size_t len_contentType = 0;
 	size_t len_contentLength = 0;
+	size_t bytes_CORS = 0;
 	size_t bytes_written = 0;
 	size_t bytes_contentType = 0;
 	size_t bytes_contentLength = 0;
 	size_t bytes_contentData = 0;
+	ssize_t sbytes_CORS = 0;
 	ssize_t sbytes_contentType = 0;
 	ssize_t sbytes_contentLength = 0;
 	ssize_t sbytes_contentData = 0;
@@ -223,6 +223,7 @@ int HttpRespondGetFile(
 	size_t pagemask = 0;
 	void *map = NULL;
 	char *data = NULL;
+	char access_control_allow_origin[] = "Access-Control-Allow-Origin: *\r\n";
 	char content_length[HTTP_CONTENT_LENGTH_SIZE];
 	char content_type[256];
 	char imagepng[] = "Content-Type: image/png\r\n";
@@ -298,6 +299,20 @@ int HttpRespondGetFile(
 
 	DataResponse->size_header += len_contentType;
 
+	if (DataResponse->requires_cors) {
+		avail = (HTTP_HEADER_SIZE - DataResponse->size_header);
+		sbytes_CORS = bytes_CORS = sizeof(access_control_allow_origin);
+		len_CORS = (bytes_CORS - 1);
+		if ((avail > 0) && (avail <= sbytes_CORS)) {
+			fprintf(stderr, "HttpRespondGetFile: %s\n", "error avail header size");
+			goto error_handler;
+		}
+
+		memcpy(DataResponse->response + DataResponse->size_header, access_control_allow_origin, len_CORS);
+
+		DataResponse->size_header += len_CORS;
+	}
+
 	// NOTE: this is the end of the reponse header and this is why we append CRLF
 	sbytes_contentData = bytes_contentData = bytes_file = st.st_size;
 	bytes_written = snprintf(
@@ -368,8 +383,7 @@ int HttpRespondGetFile(
 	bytes_file = bytes_contentData;
 	memcpy(DataResponse->response + DataResponse->offset_content, data, bytes_file);
 	DataResponse->size_content = bytes_contentData;
-	DataResponse->size = DataResponse->size_header + DataResponse->size_content;
-	DataResponse->size_total = DataResponse->size;
+	DataResponse->size_total = DataResponse->size_header + DataResponse->size_content;
 
 	rc = HTTP_SUCCESS_RC;
 	return rc;
@@ -429,6 +443,12 @@ int HttpRespond(void *data) {
 	char response[HTTP_HEADER_SIZE] = (
 		"HTTP/1.1 200 \r\n"
 		"Connection: close\r\n"
+	);
+
+	char error_response[] = (
+		"HTTP/1.1 500 \r\n"
+		"Connection: close\r\n"
+		"\r\n"
 	);
 
 	struct HttpResponse DataResponse = {};
@@ -555,6 +575,10 @@ int HttpRespond(void *data) {
 		goto error_handler;
 	}
 
+	if (strcasestr(head, client->origin)) {
+		DataResponse.requires_cors = 1;
+	}
+
 	// TODO: refactor this into the router function
 	if (HTTP_METHOD_GET == method) {
 		if (strstr(URI, "favicon")) {
@@ -584,7 +608,7 @@ int HttpRespond(void *data) {
 	if (!DataResponse.size_content) {
 		bytes_written = write(fd, DataResponse.response, strlen(response));
 	} else {
-		bytes_written = write(fd, DataResponse.response, DataResponse.size);
+		bytes_written = write(fd, DataResponse.response, DataResponse.size_total);
 	}
 	if (-1 == bytes_written) {
 		if (errno) {
@@ -596,6 +620,7 @@ int HttpRespond(void *data) {
 	close(fd);
 	return HTTP_SUCCESS_RC;
 error_handler:
+	write(fd, error_response, strlen(error_response));
 	close(fd);
 	return HTTP_FAILURE_RC;
 }
@@ -888,7 +913,7 @@ int main () {
 	size_t const pagesize = ret;
 
 	errno = 0;
-	size_t const size_stack = (((HTTP_HEADER_SIZE) + (pagesize << 1)) << 1);
+	size_t const size_stack = (((HTTP_HEADER_SIZE) + (pagesize << 2)) << 1);
 	void *stack = mmap(NULL,
 			size_stack,
 			PROT_READ | PROT_WRITE,
@@ -915,6 +940,27 @@ int main () {
 	}
 
 	char *top_stack = ((char*) stack) + size_stack;
+
+	char origin[256] = "Origin: " HTTP_SERVER_SCHEME "://";
+	char *host = inet_ntoa(sin->sin_addr);
+	char port[16];
+	memset(port, 0, sizeof(port));
+
+	size_t bytes_written = snprintf(port, sizeof(port), ":%d", HTTP_LISTEN_PORT);
+	if (sizeof(port) <= bytes_written) {
+		fprintf(stderr, "%s\n", "server: would overflow buffer port");
+		freeaddrinfo(ai);
+		_exit(1);
+	}
+
+	if (sizeof(origin) < (1 + strlen(origin) + strlen(host) + strlen(port))) {
+		fprintf(stderr, "%s\n", "server: would overflow buffer origin");
+		freeaddrinfo(ai);
+		_exit(1);
+	}
+
+	strncat(origin, host, strlen(host));
+	strncat(origin, port, strlen(port));
 
 	running = 1;
 	while (running) {
@@ -945,6 +991,9 @@ int main () {
 				);
 
 				struct ClientData client = {};
+				client.origin = origin;
+				client.host = host;
+				client.port = port;
 				client.sockfd = sockfd;
 				rc = HttpResponseScheduler(top_stack, &client);
 				if (HTTP_FAILURE_RC == rc) {
