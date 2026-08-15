@@ -257,7 +257,7 @@ int HttpHeaderRead(
 	int rc = HttpSysRead(sockfd, head, HTTP_HEADER_SIZE, &bytes_proc);
 #if DEVBUILD
 	fprintf(stdout, "%s\n", "request header:");
-	fprintf(stdout, "%s", (char*) head);
+	fprintf(stdout, "%s", head);
 	fprintf(stdout, "bytes: %ld\n", bytes_proc);
 #endif
 	return rc;
