@@ -98,31 +98,59 @@ struct HttpResponse {
 	char response[HTTP_HEADER_SIZE];
 };
 
-// TODO: chromium hangs when sending CORS requests (example image with crossorigin=anonymous); firefox and google chrome do not hang. Find out if chromium sent the final CRLF so that if we get EAGAIN and we have the final CRLF (we would have a header-field CRLF CRLF we would be checking the last four bytes)
 __httpd_extern
 __httpd_internal
-int HttpHeaderRead(
-	char * const head,
-	int const sockfd
+int HttpSysRead(
+	int const sockfd,
+	char * const buffer,
+	size_t const size_buffer,
+	size_t * const bytes_proc
 ) {
+	*bytes_proc = 0;
 	int sw = 0;
+	size_t tries = 0;
+	size_t max_tries = 32;
 	ssize_t ret = 0;
-	ssize_t bytes_read = 0;
-	ssize_t bytes_total = 0;
+	ssize_t sbytes_remaining = 0;
+	size_t bytes_remaining = 0;
+	size_t bytes_read = 0;
+	size_t bytes_total = 0;
 	size_t const chunk = 16;
-	char *p = (typeof(p)) head;
+	size_t bytes = (chunk > size_buffer)? size_buffer : chunk;
+	char *p = buffer;
 	do {
-		ret = read(sockfd, p, chunk);
-		if (-1 == ret) {
+		ret = read(sockfd, p, bytes);
+		if (0 > ret) {
 			// NOTE: we have a non-blocking socket and on linux we need to handle tcp/ip errors as EAGAIN, for more info see `man accept`
 			if ((ENETUNREACH != errno) && (EOPNOTSUPP != errno) && (EHOSTUNREACH != errno) && (ENONET != errno) && (EHOSTDOWN != errno) && (ENOPROTOOPT != errno) && (EPROTO != errno) && (ENETDOWN != errno) && (EAGAIN != errno) && (EINTR != errno)) {
+				*bytes_proc = bytes_total;
 				goto error_handler;
+			}
+			else {
+				if (max_tries > tries) {
+					++tries;
+					fprintf(stderr, "HttpHeaderRead: ignoring errno: %d error: %s\n", errno, strerror(errno));
+				}
+				else {
+					fprintf(stderr, "HttpHeaderRead: %s\n", "error maximum number of tries reached quitting");
+					*bytes_proc = bytes_total;
+					goto error_handler;
+				}
 			}
 			sw = 1;
 		}
 		else {
+			tries = 0;
 			bytes_read = ret;
 			bytes_total += bytes_read;
+			sbytes_remaining = (size_buffer - bytes_total);
+			if (0 > sbytes_remaining) {
+				fprintf(stderr, "HttpSysRead: %s\n", "error impl");
+				*bytes_proc = bytes_total;
+				goto error_handler;
+			}
+			bytes_remaining = sbytes_remaining;
+			bytes = (bytes_remaining > chunk)? chunk : bytes_remaining;
 			p += bytes_read;
 			if (!bytes_read) {
 				sw = 0;
@@ -136,11 +164,7 @@ int HttpHeaderRead(
 		}
 	} while (sw);
 
-#if DEVBUILD
-	fprintf(stdout, "%s\n", "request header:");
-	fprintf(stdout, "%s", (char*) head);
-	fprintf(stdout, "bytes: %ld\n", bytes_total);
-#endif
+	*bytes_proc = bytes_total;
 	return HTTP_SUCCESS_RC;
 error_handler:
 	fprintf(stderr, "%s\n", strerror(errno));
@@ -178,12 +202,13 @@ int HttpSysWrite(
 		else {
 			bytes_written = ret;
 			bytes_total += bytes_written;
-			sbytes_remaining = bytes_remaining = (size_buffer - bytes_total);
+			sbytes_remaining = (size_buffer - bytes_total);
 			if (0 > sbytes_remaining) {
 				fprintf(stderr, "HttpSysWrite: %s\n", "error impl");
 				goto error_handler;
 
 			}
+			bytes_remaining = sbytes_remaining;
 			bytes_write = (chunk > bytes_remaining)? bytes_remaining : chunk;
 			p += bytes_written;
 			if (!bytes_written) {
@@ -220,6 +245,22 @@ error_handler:
 		fprintf(stderr, "HttpSysWrite: %s\n", "error_handler");
 	}
 	return HTTP_FAILURE_RC;
+}
+
+__httpd_extern
+__httpd_internal
+int HttpHeaderRead(
+	char * const head,
+	int const sockfd
+) {
+	size_t bytes_proc = 0;
+	int rc = HttpSysRead(sockfd, head, HTTP_HEADER_SIZE, &bytes_proc);
+#if DEVBUILD
+	fprintf(stdout, "%s\n", "request header:");
+	fprintf(stdout, "%s", (char*) head);
+	fprintf(stdout, "bytes: %ld\n", bytes_proc);
+#endif
+	return rc;
 }
 
 __httpd_extern
@@ -650,7 +691,7 @@ int HttpRespond(void *data) {
 	rc = HttpHeaderRead(head, fd);
 	if (HTTP_FAILURE_RC == rc) {
 		fprintf(stderr, "%s\n", "HttpHeaderRead: read header failed");
-		goto error_handler;
+		goto fatal_error_handler;
 	}
 
 	rc = HttpHeaderFindMethod(&method, head, &URI);
