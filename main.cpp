@@ -180,6 +180,7 @@ error_handler:
 	return HTTP_FAILURE_RC;
 }
 
+// NOTE: consider microsleeps on consecutive EAGAIN errors if we encounter them later on (as it is done for HttpSysRead)
 __httpd_extern
 __httpd_internal
 int HttpSysWrite(
