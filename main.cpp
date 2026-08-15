@@ -822,6 +822,7 @@ __httpd_extern
 __httpd_internal
 int HttpDowntimeProcessReaper(void) {
 	int rc = 0;
+	int signum = 0;
 	do {
 		errno = 0;
 		int wstatus = 0;
@@ -843,12 +844,13 @@ int HttpDowntimeProcessReaper(void) {
 					WEXITSTATUS(wstatus)
 				);
 			}
-			else if (WIFSIGNALED(wstatus)) {
+			else if ((signum = WIFSIGNALED(wstatus))) {
 				fprintf(
 					stdout,
-					"pid: %d signal: %d\n",
+					"pid: %d signum: %d signal: %s\n",
 					pid,
-					WTERMSIG(wstatus)
+					signum,
+					strsignal(signum)
 				);
 			}
 		}
