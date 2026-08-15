@@ -96,6 +96,7 @@ struct HttpResponse {
 	size_t size_total;
 	int64_t requires_cors;
 	char header[HTTP_HEADER_SIZE];
+	char *content;
 };
 
 __httpd_extern
@@ -269,7 +270,12 @@ int HttpResponseWrite(
 	int const sockfd,
 	struct HttpResponse const * const DataResponse
 ) {
-	return HttpSysWrite(sockfd, DataResponse->header, DataResponse->size_total);
+	int rc = HttpSysWrite(sockfd, DataResponse->header, DataResponse->size_header);
+	if (HTTP_FAILURE_RC == rc) {
+		return rc;
+	}
+	rc = HttpSysWrite(sockfd, DataResponse->content, DataResponse->size_content);
+	return rc;
 }
 
 // NOTE: this is a very optimistic way of handling this and hence it needs improvement
@@ -509,7 +515,7 @@ int HttpRespondGetFile(
 	}
 
 	bytes_file = bytes_contentData;
-	memcpy(DataResponse->header + DataResponse->offset_content, data, bytes_file);
+	DataResponse->content = data;
 	DataResponse->size_content = bytes_contentData;
 	DataResponse->size_total = DataResponse->size_header + DataResponse->size_content;
 
