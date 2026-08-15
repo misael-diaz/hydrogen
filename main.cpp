@@ -108,8 +108,11 @@ int HttpSysRead(
 ) {
 	*bytes_proc = 0;
 	int sw = 0;
+	float const microsleep_time_float = 20e3;
+	useconds_t const microsleep_time = microsleep_time_float;
 	size_t tries = 0;
-	size_t max_tries = 32;
+	size_t const max_tries = 32;
+	size_t const sleep_after_tries = (max_tries >> 1);
 	ssize_t ret = 0;
 	ssize_t sbytes_remaining = 0;
 	size_t bytes_remaining = 0;
@@ -127,6 +130,12 @@ int HttpSysRead(
 				goto error_handler;
 			}
 			else {
+				if (sleep_after_tries == tries) {
+					++tries;
+					fprintf(stderr, "HttpHeaderRead: ignoring errno: %d error: %s\n", errno, strerror(errno));
+					fprintf(stderr, "HttpHeaderRead: %s\n", "sleeping");
+					usleep(microsleep_time);
+				}
 				if (max_tries > tries) {
 					++tries;
 					fprintf(stderr, "HttpHeaderRead: ignoring errno: %d error: %s\n", errno, strerror(errno));
