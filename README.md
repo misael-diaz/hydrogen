@@ -14,6 +14,7 @@ Sonic Speed HTTP Server
 - **async requests**: server responds to incoming requests asynchronously by means of signal handlers. The children still process the request in the usual way which is the right call.
 - **response timestamp**: includes the response timestamp according to [RFC9110](https://www.rfc-editor.org/info/rfc9110/#name-date-time-formats). Setting the child process timezone environment variable to zero UTC does the trick to respond with the localtime in GMT. Linux date and time utilities were used to implement this.
 - **favicon**: responds to content-type image, the favicon must be located in `public/favicons` so that the server will write its contents to the HTTP GET response. This has been done in commit [a23e21c7165af3c9bbf5ea54ba0d4358c3bb8c17](https://github.com/misael-diaz/sonic-httpd/tree/a23e21c7165af3c9bbf5ea54ba0d4358c3bb8c17).
+- **CORS**: initial handling of cors when `Origin` is in the headers; this means that the server responds with `Access-Control-Allow-Origin: *`. This should be fine because the user agent does not send credentials. Have checked that this works on firefox and chrome. This work was done in commit [e82bcf5d](https://github.com/misael-diaz/sonic-httpd/tree/e82bcf5d9912771707aab3a6f1e43cb05a7766a2).
 
 ## Build
 
