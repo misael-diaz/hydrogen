@@ -98,7 +98,7 @@ struct HttpResponse {
 	char response[HTTP_HEADER_SIZE];
 };
 
-// WARNING: chromium hangs when sending CORS requests (example image with crossorigin=anonymous); firefox and google chrome do not hang
+// TODO: chromium hangs when sending CORS requests (example image with crossorigin=anonymous); firefox and google chrome do not hang. Find out if chromium sent the final CRLF so that if we get EAGAIN and we have the final CRLF (we would have a header-field CRLF CRLF we would be checking the last four bytes)
 __httpd_extern
 __httpd_internal
 int HttpHeaderRead(
@@ -114,7 +114,8 @@ int HttpHeaderRead(
 	do {
 		ret = read(sockfd, p, chunk);
 		if (-1 == ret) {
-			if (EINTR != errno) {
+			// NOTE: we have a non-blocking socket and on linux we need to handle tcp/ip errors as EAGAIN, for more info see `man accept`
+			if ((ENETUNREACH != errno) && (EOPNOTSUPP != errno) && (EHOSTUNREACH != errno) && (ENONET != errno) && (EHOSTDOWN != errno) && (ENOPROTOOPT != errno) && (EPROTO != errno) && (ENETDOWN != errno) && (EAGAIN != errno) && (EINTR != errno)) {
 				goto error_handler;
 			}
 			sw = 1;
@@ -126,8 +127,9 @@ int HttpHeaderRead(
 			if (!bytes_read) {
 				sw = 0;
 			}
-			else if (chunk != bytes_read)
+			else if (chunk != bytes_read) {
 				sw = 0;
+			}
 			else {
 				sw = 1;
 			}
@@ -143,6 +145,90 @@ int HttpHeaderRead(
 error_handler:
 	fprintf(stderr, "%s\n", strerror(errno));
 	return HTTP_FAILURE_RC;
+}
+
+__httpd_extern
+__httpd_internal
+int HttpSysWrite(
+	int const sockfd,
+	char const * const buffer,
+	size_t const size_buffer
+) {
+	int sw = 0;
+	ssize_t ret = 0;
+	ssize_t sbytes_remaining = 0;
+	size_t bytes_written = 0;
+	size_t bytes_remaining = 0;
+	size_t bytes_total = 0;
+	size_t const chunk = 16;
+	size_t bytes_write = (size_buffer < chunk)? size_buffer : chunk;
+	char *p = (typeof(p)) buffer;
+	do {
+		ret = write(sockfd, p, bytes_write);
+		if (0 > ret) {
+			// NOTE: we have a non-blocking socket and on linux we need to handle tcp/ip errors as EAGAIN, for more info see `man accept`
+			if ((ENETUNREACH != errno) && (EOPNOTSUPP != errno) && (EHOSTUNREACH != errno) && (ENONET != errno) && (EHOSTDOWN != errno) && (ENOPROTOOPT != errno) && (EPROTO != errno) && (ENETDOWN != errno) && (EAGAIN != errno) && (EINTR != errno)) {
+				goto error_handler;
+			}
+			else {
+				fprintf(stderr, "HttpSysWrite: ignoring errno: %d error: %s\n", errno, strerror(errno));
+			}
+			sw = 1;
+		}
+		else {
+			bytes_written = ret;
+			bytes_total += bytes_written;
+			sbytes_remaining = bytes_remaining = (size_buffer - bytes_total);
+			if (0 > sbytes_remaining) {
+				fprintf(stderr, "HttpSysWrite: %s\n", "error impl");
+				goto error_handler;
+
+			}
+			bytes_write = (chunk > bytes_remaining)? bytes_remaining : chunk;
+			p += bytes_written;
+			if (!bytes_written) {
+				if (size_buffer != bytes_total) {
+					fprintf(
+						stderr,
+						"HttpSysWrite: %s\n",
+						"no bytes written but there is data "
+						"pending in the buffer"
+					);
+					goto error_handler;
+				}
+				else {
+					sw = 0;
+				}
+			}
+			else {
+				if (size_buffer == bytes_total) {
+					sw = 0;
+				}
+				else {
+					sw = 1;
+				}
+			}
+		}
+	} while (sw);
+
+	return HTTP_SUCCESS_RC;
+error_handler:
+	if (errno) {
+		fprintf(stderr, "HttpSysWrite: errno: %d error: %s\n", errno, strerror(errno));
+	}
+	else {
+		fprintf(stderr, "HttpSysWrite: %s\n", "error_handler");
+	}
+	return HTTP_FAILURE_RC;
+}
+
+__httpd_extern
+__httpd_internal
+int HttpResponseWrite(
+	int const sockfd,
+	struct HttpResponse const * const DataResponse
+) {
+	return HttpSysWrite(sockfd, DataResponse->response, DataResponse->size_total);
 }
 
 // NOTE: this is a very optimistic way of handling this and hence it needs improvement
@@ -446,6 +532,12 @@ int HttpRespond(void *data) {
 		"Connection: close\r\n"
 	);
 
+	char default_response[] = (
+		"HTTP/1.1 200 \r\n"
+		"Connection: close\r\n"
+		"\r\n"
+	);
+
 	char error_response[] = (
 		"HTTP/1.1 500 \r\n"
 		"Connection: close\r\n"
@@ -501,8 +593,6 @@ int HttpRespond(void *data) {
 	strncat(DataResponse.response, timestamp, bytes_time);
 	strncat(DataResponse.response, CRLF, sizeof(CRLF) - 1);
 
-	ssize_t bytes_written = 0;
-
 	// NOTE: the child process inherits the signal table from the parent so we need to set SIGINT to its default action (does not affect the parent process (i.e. the http-server)
 	struct sigaction sa = {};
 	sa.sa_handler = SIG_DFL;
@@ -536,6 +626,7 @@ int HttpRespond(void *data) {
 		goto error_handler;
 	}
 
+	// NOTE: probably not necessary because child is not the owner of the listening socket
 	rc = sigaction(SIGURG, &sa, NULL);
 	if (-1 == rc) {
 		if (errno) {
@@ -545,8 +636,9 @@ int HttpRespond(void *data) {
 	}
 
 	errno = 0;
-	// NOTE: probably not necessary because child is not the owner of the listening socket
-	rc = sigaction(SIGURG, &sa, NULL);
+	sa.sa_handler = SIG_IGN;
+	// NOTE: if we don't ignore SIGPIPE we will get a SIGPIPE when the user agent or client closes the reading end of the socket
+	rc = sigaction(SIGPIPE, &sa, NULL);
 	if (-1 == rc) {
 		if (errno) {
 			fprintf(stderr, "%s\n", strerror(errno));
@@ -594,33 +686,33 @@ int HttpRespond(void *data) {
 			}
 		}
 		else {
-			// NOTE: generates the original default response
-			char content_length[] = (
-				"Content-Length: 0\r\n"
-				"\r\n"
-			);
-			strncat(response, content_length, sizeof(content_length) - 1);
+			// NOTE: just in case make sure that we send the default response by clearing the total bytes in the response data structure
+			DataResponse.size_total = 0;
 		}
 	}
 
-	// NOTE: we are effectively excluding the terminating null byte from the response and note that this only works for pure text responses and this check will be revised in the future because it's insufficient
 	errno = 0;
-	if (!DataResponse.size_content) {
-		bytes_written = write(fd, DataResponse.response, strlen(response));
-	} else {
-		bytes_written = write(fd, DataResponse.response, DataResponse.size_total);
-	}
-	if (-1 == bytes_written) {
-		if (errno) {
-			fprintf(stderr, "%s\n", strerror(errno));
+	if (!DataResponse.size_total) {
+		// NOTE: we are effectively excluding the terminating null byte from the response and note that this only works for pure text responses and this check will be revised in the future because it's insufficient
+		rc = HttpSysWrite(fd, default_response, strlen(default_response));
+		if (HTTP_FAILURE_RC == rc) {
+			goto fatal_error_handler;
 		}
-		goto error_handler;
+	} else {
+		rc = HttpResponseWrite(fd, &DataResponse);
+		if (HTTP_FAILURE_RC == rc) {
+			goto fatal_error_handler;
+		}
 	}
 
 	close(fd);
 	return HTTP_SUCCESS_RC;
 error_handler:
-	write(fd, error_response, strlen(error_response));
+	HttpSysWrite(fd, error_response, strlen(error_response));
+	close(fd);
+	return HTTP_FAILURE_RC;
+fatal_error_handler:
+	// NOTE: we are not able to write more data to the socket probably so it does not make sense to try to write to it but in the future we may want to log fatal errors specially and so it's a good idea to handle them specially
 	close(fd);
 	return HTTP_FAILURE_RC;
 }
@@ -969,7 +1061,7 @@ int main () {
 			struct sockaddr_in client = {};
 			socklen_t len = sizeof(struct sockaddr_in);
 			// TODO: tcp/ip error handling pending see "Error handling" section of `man accept` for more info
-			rc = accept(fd, (struct sockaddr*) &client, &len);
+			rc = accept4(fd, (struct sockaddr*) &client, &len, O_NONBLOCK | O_CLOEXEC);
 			if (-1 == rc) {
 				if ((EAGAIN != errno) && (EWOULDBLOCK != errno)) {
 					fprintf(stderr, "%s\n", strerror(errno));
