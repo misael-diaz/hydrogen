@@ -95,7 +95,7 @@ struct HttpResponse {
 	size_t size_content;
 	size_t size_total;
 	int64_t requires_cors;
-	char response[HTTP_HEADER_SIZE];
+	char header[HTTP_HEADER_SIZE];
 };
 
 __httpd_extern
@@ -269,7 +269,7 @@ int HttpResponseWrite(
 	int const sockfd,
 	struct HttpResponse const * const DataResponse
 ) {
-	return HttpSysWrite(sockfd, DataResponse->response, DataResponse->size_total);
+	return HttpSysWrite(sockfd, DataResponse->header, DataResponse->size_total);
 }
 
 // NOTE: this is a very optimistic way of handling this and hence it needs improvement
@@ -416,14 +416,14 @@ int HttpRespondGetFile(
 	}
 
 	// NOTE: we are checking the available space as if we were going to include the null byte even if we won't and the response header is zero initialized and so we can use strlen() to get its size reliably
-	DataResponse->size_header = strlen(DataResponse->response);
+	DataResponse->size_header = strlen(DataResponse->header);
 	avail = (HTTP_HEADER_SIZE - DataResponse->size_header);
 	if ((avail > 0) && (avail <= sbytes_contentType)) {
 		fprintf(stderr, "HttpRespondGetFile: %s\n", "error avail header size");
 		goto error_handler;
 	}
 
-	memcpy(DataResponse->response + DataResponse->size_header, content_type, len_contentType);
+	memcpy(DataResponse->header + DataResponse->size_header, content_type, len_contentType);
 
 	DataResponse->size_header += len_contentType;
 
@@ -436,7 +436,7 @@ int HttpRespondGetFile(
 			goto error_handler;
 		}
 
-		memcpy(DataResponse->response + DataResponse->size_header, access_control_allow_origin, len_CORS);
+		memcpy(DataResponse->header + DataResponse->size_header, access_control_allow_origin, len_CORS);
 
 		DataResponse->size_header += len_CORS;
 	}
@@ -467,7 +467,7 @@ int HttpRespondGetFile(
 	}
 
 	// NOTE: again this is the end of the response header and so we can now set the offset to the content (that is the data of the response which correspond to the bytes that belong to the file we are currently dealing with)
-	memcpy(DataResponse->response + DataResponse->size_header, content_length, len_contentLength);
+	memcpy(DataResponse->header + DataResponse->size_header, content_length, len_contentLength);
 	DataResponse->size_header += len_contentLength;
 	DataResponse->offset_content = DataResponse->size_header;
 
@@ -509,7 +509,7 @@ int HttpRespondGetFile(
 	}
 
 	bytes_file = bytes_contentData;
-	memcpy(DataResponse->response + DataResponse->offset_content, data, bytes_file);
+	memcpy(DataResponse->header + DataResponse->offset_content, data, bytes_file);
 	DataResponse->size_content = bytes_contentData;
 	DataResponse->size_total = DataResponse->size_header + DataResponse->size_content;
 
@@ -586,7 +586,7 @@ int HttpRespond(void *data) {
 	);
 
 	struct HttpResponse DataResponse = {};
-	memcpy(DataResponse.response, response, sizeof(response));
+	memcpy(DataResponse.header, response, sizeof(response));
 
 	errno = 0;
 	// NOTE: sets the timezone to GMT for the response according to RFC9110
@@ -631,8 +631,8 @@ int HttpRespond(void *data) {
 		return HTTP_FAILURE_RC;
 	}
 
-	strncat(DataResponse.response, timestamp, bytes_time);
-	strncat(DataResponse.response, CRLF, sizeof(CRLF) - 1);
+	strncat(DataResponse.header, timestamp, bytes_time);
+	strncat(DataResponse.header, CRLF, sizeof(CRLF) - 1);
 
 	// NOTE: the child process inherits the signal table from the parent so we need to set SIGINT to its default action (does not affect the parent process (i.e. the http-server)
 	struct sigaction sa = {};
