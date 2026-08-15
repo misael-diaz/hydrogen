@@ -89,8 +89,6 @@ struct ClientData {
 
 __httpd_extern
 struct HttpResponse {
-	size_t offset_header;
-	size_t offset_content;
 	size_t size_header;
 	size_t size_content;
 	size_t size_total;
@@ -345,12 +343,9 @@ int HttpRespondGetFile(
 	size_t bytes_CORS = 0;
 	size_t bytes_written = 0;
 	size_t bytes_contentType = 0;
-	size_t bytes_contentLength = 0;
 	size_t bytes_contentData = 0;
 	ssize_t sbytes_CORS = 0;
 	ssize_t sbytes_contentType = 0;
-	ssize_t sbytes_contentLength = 0;
-	ssize_t sbytes_contentData = 0;
 	size_t bytes_file = 0;
 	size_t size_mmap = 0;
 	size_t pagesize = 0;
@@ -425,7 +420,7 @@ int HttpRespondGetFile(
 	DataResponse->size_header = strlen(DataResponse->header);
 	avail = (HTTP_HEADER_SIZE - DataResponse->size_header);
 	if ((avail > 0) && (avail <= sbytes_contentType)) {
-		fprintf(stderr, "HttpRespondGetFile: %s\n", "error avail header size");
+		fprintf(stderr, "HttpRespondGetFile: %s\n", "surprising error avail header size");
 		goto error_handler;
 	}
 
@@ -438,7 +433,7 @@ int HttpRespondGetFile(
 		sbytes_CORS = bytes_CORS = sizeof(access_control_allow_origin);
 		len_CORS = (bytes_CORS - 1);
 		if ((avail > 0) && (avail <= sbytes_CORS)) {
-			fprintf(stderr, "HttpRespondGetFile: %s\n", "error avail header size");
+			fprintf(stderr, "HttpRespondGetFile: %s\n", "error avail header size for CORS");
 			goto error_handler;
 		}
 
@@ -448,7 +443,7 @@ int HttpRespondGetFile(
 	}
 
 	// NOTE: this is the end of the reponse header and this is why we append CRLF
-	sbytes_contentData = bytes_contentData = bytes_file = st.st_size;
+	bytes_contentData = bytes_file = st.st_size;
 	bytes_written = snprintf(
 		content_length,
 		HTTP_CONTENT_LENGTH_SIZE,
@@ -464,24 +459,10 @@ int HttpRespondGetFile(
 	}
 
 	len_contentLength = strlen(content_length);
-	sbytes_contentLength = bytes_contentLength = (1 + len_contentLength);
-
-	avail = (HTTP_HEADER_SIZE - DataResponse->size_header);
-	if ((avail > 0) && avail <= sbytes_contentLength) {
-		fprintf(stderr, "HttpRespondGetFile: %s\n", "error avail header size");
-		goto error_handler;
-	}
 
 	// NOTE: again this is the end of the response header and so we can now set the offset to the content (that is the data of the response which correspond to the bytes that belong to the file we are currently dealing with)
 	memcpy(DataResponse->header + DataResponse->size_header, content_length, len_contentLength);
 	DataResponse->size_header += len_contentLength;
-	DataResponse->offset_content = DataResponse->size_header;
-
-	avail = (HTTP_HEADER_SIZE - DataResponse->size_header);
-	if ((avail > 0) && (avail <= sbytes_contentData)) {
-		fprintf(stderr, "HttpRespondGetFile: %s\n", "error avail header size");
-		goto error_handler;
-	}
 
 	// NOTE: we need another file descriptor without O_PATH to mmap the contents (see `man open` and `man mmap`)
 	close(fd);
