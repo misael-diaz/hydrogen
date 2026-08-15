@@ -43,6 +43,7 @@ as published by the Free Software Foundation.
 // TODO: consider defining a compile-time macro that stores the working-directory which could be used to provide full paths to these files; this is something to consider and easy to do
 #define HTTP_INDEX_PATH "./http/index.html"
 #define HTTP_FAVICON_PATH "./public/favicons/favicon.png"
+#define HTTP_HERO_PATH "./public/hero/hero.png"
 
 // NOTE: this is how we disable function name mangling when compiling with a C++ compiler
 #ifndef __cplusplus
@@ -703,6 +704,12 @@ int HttpRespond(void *data) {
 	if (HTTP_METHOD_GET == method) {
 		if (strstr(URI, "favicon")) {
 			rc = HttpRespondGetFavicon(&DataResponse);
+			if (HTTP_FAILURE_RC == rc) {
+				goto error_handler;
+			}
+		}
+		else if (strstr(URI, "/hero")) {
+			rc = HttpRespondGetFile(&DataResponse, HTTP_HERO_PATH);
 			if (HTTP_FAILURE_RC == rc) {
 				goto error_handler;
 			}
