@@ -907,7 +907,7 @@ error_handler:
 	return HTTP_FAILURE_RC;
 }
 
-int main () {
+int main() {
 	errno = 0;
 	char hostname[PATH_MAX];
 	// NOTE: it should not be surprising that we get 127.0.1.1 if we supply the hostname this way getaddrinfo() because that's the expected result; you may want to try res_nquery() see `man resolver`
