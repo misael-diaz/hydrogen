@@ -979,8 +979,27 @@ int main() {
 		}
 		_exit(1);
 	}
+
 	int const modno = rc;
-	fprintf(stdout, "modules: %d\n", modno);
+	if (!modno) {
+		fprintf(stderr, "%s\n", "no modules found");
+		_exit(1);
+	}
+
+	if (modno > 1) {
+		for (int i = 1; i != modno; ++i) {
+			if (!strcmp(modlist[i - 1]->d_name, modlist[i]->d_name)) {
+				fprintf(stderr, "error duplicate module: %s\n", modlist[i - 1]->d_name);
+				_exit(1);
+			}
+		}
+	}
+
+	fprintf(stdout, "found %d modules\n", modno);
+	fprintf(stdout, "%s\n", "modules:");
+	for (int i = 0; i != modno; ++i) {
+		fprintf(stdout, "%s\n", modlist[i]->d_name);
+	}
 
 	errno = 0;
 	// NOTE: getaddrinfo does not set `errno` unless there's an issue at the system level and it does not simply set the error code `rc` to -1 as other utilities (see man getaddrinfo() for more details)
