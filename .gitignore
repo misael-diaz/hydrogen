@@ -1,6 +1,7 @@
 *.html
 *.css
 *.js
+*.so
 *.bin
 *.svg
 *.png

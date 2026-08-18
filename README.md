@@ -23,7 +23,7 @@ Sonic Speed HTTP Server
 Build the server from source code with GCC:
 
 ```sh
-gcc -DDEVBUILD=1 -Wall -Wextra -Wformat -g -gdwarf-4 -O0 main.cpp -o sonic-httpd.bin
+gcc -DDEVBUILD=1 -DDIRBUILD="\"$PWD\"" -Wall -Wextra -Wformat -fPIC -g -gdwarf-4 -shared -O0 favicon.cpp -o modules/favicon.so && gcc -DDEVBUILD=1 -DDIRBUILD="\"$PWD\"" -Wall -Wextra -Wformat -g -gdwarf-4 -O0 main.cpp -o sonic-httpd.bin -ldl
 ```
 
 ## Run

@@ -25,13 +25,16 @@ as published by the Free Software Foundation.
 #include <netdb.h>
 #include <time.h>
 #include <fcntl.h>
+#include <dlfcn.h>
 #include <unistd.h>
+#include <dirent.h>
 #include <signal.h>
 #include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include "http.hpp"
 
 #define HTTP_SUCCESS_RC 0
 #define HTTP_FAILURE_RC -1
@@ -44,15 +47,9 @@ as published by the Free Software Foundation.
 #define HTTP_INDEX_PATH "./http/index.html"
 #define HTTP_FAVICON_PATH "./public/favicons/favicon.png"
 #define HTTP_HERO_PATH "./public/hero/hero.png"
+#define HTTP_PATH_MODULES (DIRBUILD "/modules")
 
-// NOTE: this is how we disable function name mangling when compiling with a C++ compiler
-#ifndef __cplusplus
-#define __httpd_extern
-#else
-#define __httpd_extern extern "C"
-#endif
-
-#define __httpd_internal __attribute__((visibility("hidden")))
+// NOTE: `__httpd_extern` is used to disable function name mangling when compiling with a C++ compiler
 
 // NOTE: do not attemp to hotload if adding a new HTTP Method
 __httpd_extern
@@ -89,6 +86,15 @@ struct ClientData {
 };
 
 __httpd_extern
+struct HttpRequest {
+	size_t size_header;
+	size_t size_content;
+	size_t size_total;
+	char header[HTTP_HEADER_SIZE];
+	char *content;
+};
+
+__httpd_extern
 struct HttpResponse {
 	size_t size_header;
 	size_t size_content;
@@ -108,6 +114,7 @@ int HttpSysRead(
 ) {
 	*bytes_proc = 0;
 	int sw = 0;
+	// TODO: try 2ms instead to avoid waiting for too long
 	float const microsleep_time_float = 20e3;
 	useconds_t const microsleep_time = microsleep_time_float;
 	size_t tries = 0;
@@ -340,6 +347,7 @@ int HttpHeaderFindMethod(
 	return rc;
 }
 
+__httpd_extern
 int HttpRespondGetFile(
 	struct HttpResponse * const DataResponse,
 	char const * const filename
@@ -528,6 +536,7 @@ error_handler:
 // TODO: the data structure for the http response is starting to arise, we need an offset for the data and a size and a size for the header-section of the response
 // TODO: probably you want to keep a global list of files, so instead of having the child process find the file the server could do that during startup, generate the list, and grant access to the children via some suitable data structure (not global access per se)
 
+/*
 __httpd_extern
 __httpd_internal
 int HttpRespondGetFavicon(
@@ -535,6 +544,7 @@ int HttpRespondGetFavicon(
 ) {
 	return HttpRespondGetFile(DataResponse, HTTP_FAVICON_PATH);
 }
+*/
 
 // TODO:
 // [ ] if Origin is in the request Header then the server must respond with `Access-Control-Allow-Origin: *` if that makes sense, otherwise what it is appropriate for the resource. However for images (which is just content) we can safely add that to the response header. Recommend reading (again):
@@ -685,6 +695,7 @@ int HttpRespond(void *data) {
 		goto error_handler;
 	}
 
+	// TODO: read into HttpRequest struct instead
 	memset(head, 0, sizeof(head));
 	rc = HttpHeaderRead(head, fd);
 	if (HTTP_FAILURE_RC == rc) {
@@ -713,7 +724,7 @@ int HttpRespond(void *data) {
 	// TODO: refactor this into the router function
 	if (HTTP_METHOD_GET == method) {
 		if (strstr(URI, "favicon")) {
-			rc = HttpRespondGetFavicon(&DataResponse);
+			rc = HttpRespondGetFile(&DataResponse, HTTP_FAVICON_PATH);
 			if (HTTP_FAILURE_RC == rc) {
 				goto error_handler;
 			}
@@ -907,6 +918,17 @@ error_handler:
 	return HTTP_FAILURE_RC;
 }
 
+__httpd_extern
+__httpd_internal
+int HttpIsModule(struct dirent const * const dent) {
+	char const *name = dent->d_name;
+	char *module = (typeof(module)) name;
+	// NOTE: had to resort to type cast gymnastics so that GCC would accept this
+	char *match = strstr(module, ".so");
+	int rc = (!match)? 0 : 1;
+	return rc;
+}
+
 int main() {
 	errno = 0;
 	char hostname[PATH_MAX];
@@ -947,6 +969,18 @@ int main() {
 		}
 		_exit(1);
 	}
+
+	// TODO: add code to free `modlist` elements and the list itself on errors
+	struct dirent **modlist = NULL;
+	rc = scandir(HTTP_PATH_MODULES, &modlist, HttpIsModule, alphasort);
+	if (-1 == rc) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		_exit(1);
+	}
+	int const modno = rc;
+	fprintf(stdout, "modules: %d\n", modno);
 
 	errno = 0;
 	// NOTE: getaddrinfo does not set `errno` unless there's an issue at the system level and it does not simply set the error code `rc` to -1 as other utilities (see man getaddrinfo() for more details)
@@ -1050,6 +1084,37 @@ int main() {
 	}
 
 	size_t const pagesize = ret;
+	size_t const pagemask = (pagesize - 1);
+
+	struct DataModule module = {};
+	struct DataModule *modulp = &module;
+	size_t const size_modules = (modno * sizeof(*modulp));
+	size_t const size_modmap = (
+		((size_modules + (pagemask << 1)) & (~pagemask))
+	);
+	size_t const offset_modname = size_modules;
+	size_t const size_modname = pagemask;
+	size_t const offset_modfile = size_modules + size_modname;
+	size_t const size_modfile = pagemask;
+	ssize_t const ssize_modname = pagemask;
+	ssize_t const ssize_modfile = pagemask;
+
+	errno = 0;
+	void *vmodules = mmap(
+			NULL,
+			size_modmap,
+			PROT_READ | PROT_WRITE,
+			MAP_ANONYMOUS | MAP_PRIVATE,
+			-1,
+			0
+	);
+	if (MAP_FAILED == vmodules) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		freeaddrinfo(ai);
+		_exit(1);
+	}
 
 	errno = 0;
 	size_t const size_stack = (((HTTP_HEADER_SIZE) + (pagesize << 2)) << 1);
@@ -1101,6 +1166,56 @@ int main() {
 	strncat(origin, host, strlen(host));
 	strncat(origin, port, strlen(port));
 
+	// TODO: handle duplicate modules, do not load duplicates, just complain about it and refuse to start the server for security
+	struct DataModule *modules = (typeof(modules)) vmodules;
+	for (int i = 0; i != modno; ++i) {
+		struct DataModule *module = &modules[i];
+		char *modname = (((char*) vmodules) + offset_modname);
+		char *modfile = (((char*) vmodules) + offset_modfile);
+		char *ext = strstr(modlist[i]->d_name, ".so");
+		if (!ext) {
+			fprintf(stderr, "error module missing .so file extension: %s\n", modlist[i]->d_name);
+			_exit(1);
+		}
+
+		char *fullname = modlist[i]->d_name;
+		// NOTE: on linux PATH_MAX defines the maximum number of bytes for files so we are safe to use this to define the shortened version of the module; moreover, d_name is 256 bytes so we are certain that this won't overflow the buffer
+		char name[PATH_MAX];
+
+		size_t const len = (ext - fullname);
+		memset(name, 0, sizeof(name));
+		strncat(name, modlist[i]->d_name, len);
+		name[len] = 0;
+
+		ssize_t const bytes_modname = snprintf(modname, size_modname, "%sModule", name);
+		if (bytes_modname >= ssize_modname) {
+			fprintf(stderr, "error truncated module: %s\n", modlist[i]->d_name);
+			_exit(1);
+		}
+
+		ssize_t const bytes_modfile = snprintf(modfile, size_modfile, "%s/modules/%s", DIRBUILD, modlist[i]->d_name);
+		if (bytes_modfile >= ssize_modfile) {
+			fprintf(stderr, "error truncated module filename: %s\n", modlist[i]->d_name);
+			_exit(1);
+		}
+
+		void *handle = dlopen(modfile, RTLD_LAZY | RTLD_GLOBAL);
+		if (!handle) {
+			fprintf(stderr, "error failed to open module: %s\n", modfile);
+			fprintf(stderr, "error: %s\n", dlerror());
+			_exit(1);
+		}
+
+		void *data = dlsym(handle, modname);
+		if (!data) {
+			fprintf(stderr, "error symbol %s not found in module %s\n", modname, modfile);
+			_exit(1);
+		}
+		module->name = name;
+		module->handle = handle;
+		module->data = data;
+	}
+
 	running = 1;
 	while (running) {
 
@@ -1150,7 +1265,28 @@ int main() {
 		}
 	}
 
+	for (int i = 0; i != modno; ++i) {
+		free(modlist[i]);
+		modlist[i] = NULL;
+	}
+
+	for (int i = 0; i != modno; ++i) {
+		struct DataModule *module = &modules[i];
+		rc = dlclose(module->handle);
+		if (rc) {
+			// NOTE: the right thing is to report this but we should not panic and quit just keep trying to unload the other modules
+			fprintf(stderr, "failed to close module: %s\n", module->name);
+			fprintf(stderr, "error: %s\n", dlerror());
+		}
+		module->handle = NULL;
+		// NOTE: nullify the module symbol address is the right way to clear it
+		module->data = NULL;
+	}
+
+	// NOTE: memory maps will be recovered by the linux kernel automatically so we do not need to bother to unmap them
+	free(modlist);
 	freeaddrinfo(ai);
+	modlist = NULL;
 	ai = NULL;
 	_exit(0);
 	return 0;
