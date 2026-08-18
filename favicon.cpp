@@ -16,6 +16,15 @@ as published by the Free Software Foundation.
 
 __httpd_extern
 __httpd_internal
+int FaviconHead(
+        struct HttpRequest const * const DataRequest __attribute__((unused)),
+        struct HttpResponse * const DataResponse
+) {
+        return HttpRespondHeadFile(DataResponse, HTTP_PATH_FAVICON);
+}
+
+__httpd_extern
+__httpd_internal
 int FaviconGet(
         struct HttpRequest const * const DataRequest __attribute__((unused)),
         struct HttpResponse * const DataResponse
@@ -26,7 +35,7 @@ int FaviconGet(
 // NOTE: not going to include stddef.h just for NULL, we can use zero instead
 struct HttpModule faviconModule = {
 	.name = HTTP_URI_FAVICON,
-	.Head = 0,
+	.Head = FaviconHead,
 	.Get = FaviconGet,
 	.Put = 0,
 	.Post = 0,

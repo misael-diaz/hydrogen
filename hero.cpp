@@ -16,6 +16,15 @@ as published by the Free Software Foundation.
 
 __httpd_extern
 __httpd_internal
+int HeroHead(
+        struct HttpRequest const * const DataRequest __attribute__((unused)),
+        struct HttpResponse * const DataResponse
+) {
+        return HttpRespondHeadFile(DataResponse, HTTP_PATH_HERO);
+}
+
+__httpd_extern
+__httpd_internal
 int HeroGet(
         struct HttpRequest const * const DataRequest __attribute__((unused)),
         struct HttpResponse * const DataResponse
@@ -26,7 +35,7 @@ int HeroGet(
 // NOTE: not going to include stddef.h just for NULL, we can use zero instead
 struct HttpModule heroModule = {
 	.name = HTTP_URI_HERO,
-	.Head = 0,
+	.Head = HeroHead,
 	.Get = HeroGet,
 	.Put = 0,
 	.Post = 0,

@@ -16,6 +16,15 @@ as published by the Free Software Foundation.
 
 __httpd_extern
 __httpd_internal
+int RootHead(
+        struct HttpRequest const * const DataRequest __attribute__((unused)),
+        struct HttpResponse * const DataResponse
+) {
+        return HttpRespondHeadFile(DataResponse, HTTP_PATH_ROOT);
+}
+
+__httpd_extern
+__httpd_internal
 int RootGet(
         struct HttpRequest const * const DataRequest __attribute__((unused)),
         struct HttpResponse * const DataResponse
@@ -26,7 +35,7 @@ int RootGet(
 // NOTE: not going to include stddef.h just for NULL, we can use zero instead
 struct HttpModule rootModule = {
 	.name = HTTP_URI_ROOT,
-	.Head = 0,
+	.Head = RootHead,
 	.Get = RootGet,
 	.Put = 0,
 	.Post = 0,

@@ -64,4 +64,11 @@ int HttpRespondGetFile(
         char const * const filename
 );
 
+__httpd_extern
+__httpd_visible
+int HttpRespondHeadFile(
+        struct HttpResponse * const DataResponse,
+        char const * const filename
+);
+
 #endif

@@ -101,6 +101,35 @@ struct HttpResponse {
 
 __httpd_extern
 __httpd_visible
+int HttpRespondHeadFile(
+	struct HttpResponse * const DataResponse,
+	char const * const filename __attribute__((unused))
+) {
+	char CRLF[] = "\r\n";
+	size_t const len = sizeof(CRLF) - 1;
+	ssize_t const sbytes = sizeof(CRLF);
+	ssize_t avail = 0;
+	int rc = 0;
+
+	DataResponse->size_header = strlen(DataResponse->header);
+	avail = (HTTP_HEADER_SIZE - DataResponse->size_header);
+	if ((avail > 0) && (avail <= sbytes)) {
+		fprintf(stderr, "HttpRespondHeadFile: %s\n", "surprising error avail header size");
+		goto error_handler;
+	}
+	
+	memcpy(DataResponse->header + DataResponse->size_header, CRLF, len);
+
+	DataResponse->size_header += len;
+	DataResponse->size_total = DataResponse->size_header;
+	return HTTP_SUCCESS_RC;
+error_handler:
+	rc = HTTP_FAILURE_RC;
+	return rc;
+}
+
+__httpd_extern
+__httpd_visible
 int HttpRespondGetFile(
 	struct HttpResponse * const DataResponse,
 	char const * const filename
@@ -739,8 +768,13 @@ int HttpRespond(void *data) {
 		}
 		struct HttpModule *mod = module->data;
 		if (strstr(URI, mod->name)) {
-			if ((HTTP_METHOD_GET == method) && (mod->Get)) {
-				// TODO: pass the Http Request in the future, for now it's okay to pass NULL because it is not even referenced
+			// TODO: pass the Http Request in the future, for now it's okay to pass NULL because it is not even referenced
+			if ((HTTP_METHOD_HEAD == method) && (mod->Head)) {
+				fprintf(stdout, "%s\n", "head method");
+				mod->Head(NULL, &DataResponse);
+			}
+			else if ((HTTP_METHOD_GET == method) && (mod->Get)) {
+				fprintf(stdout, "%s\n", "get method");
 				mod->Get(NULL, &DataResponse);
 			}
 			else {
@@ -1187,6 +1221,13 @@ int main() {
 
 	strncat(origin, host, strlen(host));
 	strncat(origin, port, strlen(port));
+
+	void *handleHttpRespondHeadFile = dlsym(RTLD_DEFAULT, "HttpRespondHeadFile");
+	if (!handleHttpRespondHeadFile) {
+		fprintf(stderr, "%s\n", "error failed to load global symbol HttpRespondHeadFile");
+		fprintf(stderr, "error: %s\n", dlerror());
+		_exit(1);
+	}
 
 	void *handleHttpRespondGetFile = dlsym(RTLD_DEFAULT, "HttpRespondGetFile");
 	if (!handleHttpRespondGetFile) {
