@@ -19,6 +19,12 @@ as published by the Free Software Foundation.
 #endif
 
 #define __httpd_internal __attribute__((visibility("hidden")))
+#define __httpd_visible  __attribute__((visibility("default")))
+
+#define HTTP_SUCCESS_RC 0
+#define HTTP_FAILURE_RC -1
+#define HTTP_CONTENT_LENGTH_SIZE 256
+#define HTTP_HEADER_SIZE (PATH_MAX)
 
 __httpd_extern
 struct HttpRequest;
@@ -32,10 +38,13 @@ typedef int (*HttpMethodFn)(
 );
 
 __httpd_extern
+struct HttpModule;
+
+__httpd_extern
 struct DataModule {
 	char const *name;
 	void *handle;
-	void *data;
+	struct HttpModule *data;
 };
 
 __httpd_extern
@@ -49,6 +58,7 @@ struct HttpModule {
 };
 
 __httpd_extern
+__httpd_visible
 int HttpRespondGetFile(
         struct HttpResponse * const DataResponse,
         char const * const filename

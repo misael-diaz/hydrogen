@@ -23,7 +23,7 @@ Sonic Speed HTTP Server
 Build the server from source code with GCC:
 
 ```sh
-mkdir -p modules && gcc -DDEVBUILD=1 -DDIRBUILD="\"$PWD\"" -Wall -Wextra -Wformat -fPIC -g -gdwarf-4 -shared -O0 favicon.cpp -o modules/favicon.so && gcc -DDEVBUILD=1 -DDIRBUILD="\"$PWD\"" -Wall -Wextra -Wformat -fPIC -g -gdwarf-4 -shared -O0 root.cpp -o modules/root.so && gcc -DDEVBUILD=1 -DDIRBUILD="\"$PWD\"" -Wall -Wextra -Wformat -g -gdwarf-4 -O0 main.cpp -o sonic-httpd.bin -ldl
+mkdir -p modules && gcc -DDEVBUILD=1 -DDIRBUILD="\"$PWD\"" -Wall -Wextra -Wformat -fPIC -g -gdwarf-4 -shared -O0 favicon.cpp -o modules/favicon.so && gcc -DDEVBUILD=1 -DDIRBUILD="\"$PWD\"" -Wall -Wextra -Wformat -fPIC -g -gdwarf-4 -shared -O0 hero.cpp -o modules/hero.so && gcc -DDEVBUILD=1 -DDIRBUILD="\"$PWD\"" -Wall -Wextra -Wformat -fPIC -g -gdwarf-4 -shared -O0 root.cpp -o modules/root.so && gcc -DDEVBUILD=1 -DDIRBUILD="\"$PWD\"" -Wall -Wextra -Wformat -g -gdwarf-4 -O0 -c main.cpp -o main.o && gcc -DDEVBUILD=1 -DDIRBUILD="\"$PWD\"" -Wall -Wextra -Wformat -g -gdwarf-4 -O0 main.o -o sonic-httpd.bin -Wl,--export-dynamic -ldl
 ```
 
 ## Run
