@@ -2,6 +2,7 @@
 *.css
 *.js
 *.so
+*.o
 *.bin
 *.svg
 *.png
