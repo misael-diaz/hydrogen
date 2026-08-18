@@ -264,6 +264,7 @@ error_handler:
 	return HTTP_FAILURE_RC;
 }
 
+// TODO: this is fine for HTTP GET Request Headers but not adequate for POST because we are just reading bytes until there's no more or until we run out of space; bear in mind that POST requests include data that should be put elsewhere not as part of the header
 __httpd_extern
 __httpd_internal
 int HttpHeaderRead(
@@ -1185,7 +1186,7 @@ int main() {
 	strncat(origin, host, strlen(host));
 	strncat(origin, port, strlen(port));
 
-	// TODO: handle duplicate modules, do not load duplicates, just complain about it and refuse to start the server for security
+	// TODO: handle duplicate modules, do not load duplicates, just complain about it and refuse to start the server for security.
 	struct DataModule *modules = (typeof(modules)) vmodules;
 	for (int i = 0; i != modno; ++i) {
 		struct DataModule *module = &modules[i];
