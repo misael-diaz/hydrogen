@@ -155,7 +155,7 @@ int HttpRespondHeadFile(
 		fprintf(stderr, "HttpRespondHeadFile: %s\n", "surprising error avail header size");
 		goto error_handler;
 	}
-	
+
 	memcpy(DataResponse->header + DataResponse->size_header, CRLF, len);
 
 	DataResponse->size_header += len;
