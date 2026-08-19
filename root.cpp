@@ -17,8 +17,8 @@ as published by the Free Software Foundation.
 __httpd_extern
 __httpd_internal
 int RootHead(
-        struct HttpRequest const * const DataRequest __attribute__((unused)),
-        struct HttpResponse * const DataResponse
+        struct HttpResponse * const DataResponse,
+        struct HttpRequest const * const DataRequest __attribute__((unused))
 ) {
         return HttpRespondHeadFile(DataResponse, HTTP_PATH_ROOT);
 }
@@ -26,8 +26,8 @@ int RootHead(
 __httpd_extern
 __httpd_internal
 int RootGet(
-        struct HttpRequest const * const DataRequest __attribute__((unused)),
-        struct HttpResponse * const DataResponse
+        struct HttpResponse * const DataResponse,
+        struct HttpRequest const * const DataRequest __attribute__((unused))
 ) {
         return HttpRespondGetFile(DataResponse, HTTP_PATH_ROOT);
 }

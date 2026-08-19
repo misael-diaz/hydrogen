@@ -17,8 +17,8 @@ as published by the Free Software Foundation.
 __httpd_extern
 __httpd_internal
 int HeroHead(
-        struct HttpRequest const * const DataRequest __attribute__((unused)),
-        struct HttpResponse * const DataResponse
+        struct HttpResponse * const DataResponse,
+        struct HttpRequest const * const DataRequest __attribute__((unused))
 ) {
         return HttpRespondHeadFile(DataResponse, HTTP_PATH_HERO);
 }
@@ -26,8 +26,8 @@ int HeroHead(
 __httpd_extern
 __httpd_internal
 int HeroGet(
-        struct HttpRequest const * const DataRequest __attribute__((unused)),
-        struct HttpResponse * const DataResponse
+        struct HttpResponse * const DataResponse,
+        struct HttpRequest const * const DataRequest __attribute__((unused))
 ) {
         return HttpRespondGetFile(DataResponse, HTTP_PATH_HERO);
 }

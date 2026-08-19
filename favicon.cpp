@@ -17,8 +17,8 @@ as published by the Free Software Foundation.
 __httpd_extern
 __httpd_internal
 int FaviconHead(
-        struct HttpRequest const * const DataRequest __attribute__((unused)),
-        struct HttpResponse * const DataResponse
+        struct HttpResponse * const DataResponse,
+        struct HttpRequest const * const DataRequest __attribute__((unused))
 ) {
         return HttpRespondHeadFile(DataResponse, HTTP_PATH_FAVICON);
 }
@@ -26,8 +26,8 @@ int FaviconHead(
 __httpd_extern
 __httpd_internal
 int FaviconGet(
-        struct HttpRequest const * const DataRequest __attribute__((unused)),
-        struct HttpResponse * const DataResponse
+        struct HttpResponse * const DataResponse,
+        struct HttpRequest const * const DataRequest __attribute__((unused))
 ) {
         return HttpRespondGetFile(DataResponse, HTTP_PATH_FAVICON);
 }

@@ -33,8 +33,8 @@ __httpd_extern
 struct HttpResponse;
 
 typedef int (*HttpMethodFn)(
-	struct HttpRequest const * const request,
-	struct HttpResponse * const response
+	struct HttpResponse * const response,
+	struct HttpRequest const * const request
 );
 
 __httpd_extern

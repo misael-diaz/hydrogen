@@ -640,14 +640,14 @@ int HttpRouter(
 			// TODO: pass the Http Request in the future, for now it's okay to pass NULL because it is not even referenced
 			if ((HTTP_METHOD_HEAD == method) && (mod->Head)) {
 				fprintf(stdout, "HttpRouter: %s\n", "head method");
-				rc = mod->Head(NULL, DataResponse);
+				rc = mod->Head(DataResponse, NULL);
 				if (HTTP_FAILURE_RC == rc) {
 					goto error_handler;
 				}
 			}
 			else if ((HTTP_METHOD_GET == method) && (mod->Get)) {
 				fprintf(stdout, "HttpRouter: %s\n", "get method");
-				rc = mod->Get(NULL, DataResponse);
+				rc = mod->Get(DataResponse, NULL);
 				if (HTTP_FAILURE_RC == rc) {
 					goto error_handler;
 				}
