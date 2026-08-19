@@ -698,7 +698,7 @@ int HttpRespond(void *data) {
 	char CRLF[] = "\r\n";
 
 	// TODO: we probably want to clear define this later, so we should only allocate
-	char response[HTTP_HEADER_SIZE] = (
+	char initial_response[HTTP_HEADER_SIZE] = (
 		"HTTP/1.1 200 \r\n"
 		"Connection: close\r\n"
 	);
@@ -716,7 +716,7 @@ int HttpRespond(void *data) {
 	);
 
 	struct HttpResponse DataResponse = {};
-	memcpy(DataResponse.header, response, sizeof(response));
+	memcpy(DataResponse.header, initial_response, sizeof(initial_response));
 
 	errno = 0;
 	// NOTE: sets the timezone to GMT for the response according to RFC9110
