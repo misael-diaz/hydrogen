@@ -100,6 +100,44 @@ struct HttpResponse {
 };
 
 __httpd_extern
+__httpd_internal
+int HttpRespondNotImpl(
+	struct HttpResponse * const DataResponse
+) {
+	char CRLF[] = "\r\n";
+	char stat[] = "501";
+	size_t const len = sizeof(CRLF) - 1;
+	ssize_t const sbytes = sizeof(CRLF);
+	size_t const len_stat = (sizeof(stat) - 1);
+	ssize_t avail = 0;
+	int rc = 0;
+
+	char *p = strstr(DataResponse->header, "200");
+	if (!p) {
+		fprintf(stderr, "HttpRespondNotImpl: %s\n", "missing initial response pus");
+		goto error_handler;
+	}
+
+	memcpy(p, stat, len_stat);
+
+	DataResponse->size_header = strlen(DataResponse->header);
+	avail = (HTTP_HEADER_SIZE - DataResponse->size_header);
+	if ((avail > 0) && (avail <= sbytes)) {
+		fprintf(stderr, "HttpRespondHeadFile: %s\n", "surprising error avail header size");
+		goto error_handler;
+	}
+
+	memcpy(DataResponse->header + DataResponse->size_header, CRLF, len);
+
+	DataResponse->size_header += len;
+	DataResponse->size_total = DataResponse->size_header;
+	return HTTP_SUCCESS_RC;
+error_handler:
+	rc = HTTP_FAILURE_RC;
+	return rc;
+}
+
+__httpd_extern
 __httpd_visible
 int HttpRespondHeadFile(
 	struct HttpResponse * const DataResponse,
@@ -778,7 +816,10 @@ int HttpRespond(void *data) {
 				mod->Get(NULL, &DataResponse);
 			}
 			else {
-				DataResponse.size_total = 0;
+				rc = HttpRespondNotImpl(&DataResponse);
+				if (HTTP_FAILURE_RC == rc) {
+					goto fatal_error_handler;
+				}
 			}
 			break;
 		}
