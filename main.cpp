@@ -628,7 +628,6 @@ int HttpRouter(
 		}
 		struct HttpModule *mod = module->data;
 		if (strstr(URI, mod->name)) {
-			// TODO: pass the Http Request in the future, for now it's okay to pass NULL because it is not even referenced
 			if ((HTTP_METHOD_HEAD == method) && (mod->Head)) {
 				fprintf(stdout, "HttpRouter: %s\n", "head method");
 				rc = mod->Head(DataResponse, DataRequest);
@@ -688,7 +687,7 @@ int HttpRespond(void *data) {
 
 	char CRLF[] = "\r\n";
 
-	// TODO: we probably want to clear define this later, so we should only allocate
+	// TODO: we probably want to remove this to make up space for the stack
 	char initial_response[HTTP_HEADER_SIZE] = (
 		"HTTP/1.1 200 \r\n"
 		"Connection: close\r\n"
