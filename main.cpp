@@ -809,11 +809,17 @@ int HttpRespond(void *data) {
 			// TODO: pass the Http Request in the future, for now it's okay to pass NULL because it is not even referenced
 			if ((HTTP_METHOD_HEAD == method) && (mod->Head)) {
 				fprintf(stdout, "%s\n", "head method");
-				mod->Head(NULL, &DataResponse);
+				rc = mod->Head(NULL, &DataResponse);
+				if (HTTP_FAILURE_RC == rc) {
+					goto fatal_error_handler;
+				}
 			}
 			else if ((HTTP_METHOD_GET == method) && (mod->Get)) {
 				fprintf(stdout, "%s\n", "get method");
-				mod->Get(NULL, &DataResponse);
+				rc = mod->Get(NULL, &DataResponse);
+				if (HTTP_FAILURE_RC == rc) {
+					goto fatal_error_handler;
+				}
 			}
 			else {
 				rc = HttpRespondNotImpl(&DataResponse);
