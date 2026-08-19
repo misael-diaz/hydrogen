@@ -385,15 +385,13 @@ int HttpSysRead(
 				goto error_handler;
 			}
 			else {
-				if (sleep_after_tries == tries) {
-					++tries;
-					fprintf(stderr, "HttpHeaderRead: ignoring errno: %d error: %s\n", errno, strerror(errno));
-					fprintf(stderr, "HttpHeaderRead: %s\n", "sleeping");
-					usleep(microsleep_time);
-				}
 				if (max_tries > tries) {
-					++tries;
 					fprintf(stderr, "HttpHeaderRead: ignoring errno: %d error: %s\n", errno, strerror(errno));
+					if (sleep_after_tries <= tries) {
+						fprintf(stderr, "HttpHeaderRead: %s\n", "sleeping");
+						usleep(microsleep_time);
+					}
+					++tries;
 				}
 				else {
 					fprintf(stderr, "HttpHeaderRead: %s\n", "error maximum number of tries reached quitting");
