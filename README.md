@@ -1,5 +1,5 @@
-# sonic-httpd
-Sonic Speed HTTP Server
+# Hyrdrogen
+The lightweight http-server that's beating the web frameworks.
 
 ## Development
 
