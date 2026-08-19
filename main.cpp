@@ -39,7 +39,6 @@ as published by the Free Software Foundation.
 #define HTTP_LISTEN_PORT 8080
 #define HTTP_SERVER_SCHEME "http"
 
-// TODO: consider defining a compile-time macro that stores the working-directory which could be used to provide full paths to these files; this is something to consider and easy to do
 #define HTTP_PATH_MODULES (DIRBUILD "/modules")
 
 // NOTE: `__httpd_extern` is used to disable function name mangling when compiling with a C++ compiler
@@ -597,9 +596,7 @@ int HttpHeaderFindMethod(
 
 // NOTE: experimental code, this is so that we can respond with a favicon but this is not how I intend to handle responses
 // NOTE: this assumes that there are no more response header fields to include after this call
-// TODO: provide the response buffer size so that we know if there's enough space for the header
-// TODO: the data structure for the http response is starting to arise, we need an offset for the data and a size and a size for the header-section of the response
-// TODO: probably you want to keep a global list of files, so instead of having the child process find the file the server could do that during startup, generate the list, and grant access to the children via some suitable data structure (not global access per se)
+// TODO: probably you want to keep a global list of files, so instead of having the child process find the file the server could do that during startup, generate the list, and grant access to the children via some suitable data structure (not global access per se). For development this is great, server responds with updated files.
 
 /*
 __httpd_extern
@@ -673,20 +670,20 @@ error_handler:
 }
 
 // TODO:
-// [ ] if Origin is in the request Header then the server must respond with `Access-Control-Allow-Origin: *` if that makes sense, otherwise what it is appropriate for the resource. However for images (which is just content) we can safely add that to the response header. Recommend reading (again):
+// [x] if Origin is in the request Header then the server must respond with `Access-Control-Allow-Origin: *` if that makes sense, otherwise what it is appropriate for the resource. However for images (which is just content) we can safely add that to the response header. Recommend reading (again):
 //
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Access-Control-Allow-Origin
 //
 // Suggestion: check for Origin early on and enable access control if it's the favicon image for starters.
 //
-// [ ] check early about the request header size, we bail out if we cannot process it
-// [ ] check if closing the socket on errors would make the client hang (note that we are not responding just closing the connection)
+// [x] check early about the request header size, we bail out if we cannot process it
+// [x] check if closing the socket on errors would make the client hang (note that we are not responding just closing the connection)
 // [ ] RFC9112 https://www.rfc-editor.org/info/rfc9112/#name-message-body reject requests with both Content-Length and Transfer-Enconding and close the connection.
 // [ ] A server MAY reject a request that contains a message body but not a Content-Length by responding with 411 (Length Required). https://www.rfc-editor.org/info/rfc9112/#section-6.3-5
 // [ ] Host field is required in HTTP Requests to HTTP/1.1 servers; complain by responding with a status 400 "(Bad Request)" if the Host field is missing from the request header. https://www.rfc-editor.org/info/rfc9112/#section-3.2-4
 // [ ] complain about whitespace in request-lines with a status 400 "(Bad Request)"; https://www.rfc-editor.org/info/rfc9112/#section-3.2-4
 // [ ] we can complain about too long URIs and respond with a status 414 "(URI Too Long)"; https://www.rfc-editor.org/info/rfc9112/#section-3-4
-// [ ] support HTTP GET and HEAD methods is required, see linked MDN resource for more info (talks about that even though it's about HTTP 501 Status): https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/501
+// [x] support HTTP GET and HEAD methods is required, see linked MDN resource for more info (talks about that even though it's about HTTP 501 Status): https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/501
 // [ ] To avoid the TCP reset problem, servers typically close a connection in stages. First, the server performs a half-close by closing only the write side of the read/write connection. The server then continues to read from the connection until it receives a corresponding close by the client, or until the server is reasonably certain that its own TCP stack has received the client's acknowledgement of the packet(s) containing the server's last response. Finally, the server fully closes the connection. https://www.rfc-editor.org/info/rfc9112/#section-9.6-10 . This is something that I will need to think about in the future, right now we read and write from the same socket that we got via accept().
 // [x] include Connection: close on the resonse because we have yet to implement persistent connections; https://www.rfc-editor.org/info/rfc9112/#name-persistence
 __httpd_extern
@@ -1360,7 +1357,6 @@ int main() {
 		if (request) {
 			struct sockaddr_in client = {};
 			socklen_t len = sizeof(struct sockaddr_in);
-			// TODO: tcp/ip error handling pending see "Error handling" section of `man accept` for more info
 			rc = accept4(fd, (struct sockaddr*) &client, &len, O_NONBLOCK | O_CLOEXEC);
 			if (-1 == rc) {
 				if ((EAGAIN != errno) && (EWOULDBLOCK != errno)) {
