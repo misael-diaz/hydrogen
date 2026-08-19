@@ -81,6 +81,8 @@ struct ClientData {
 
 __httpd_extern
 struct HttpRequest {
+	enum HttpMethod method;
+	char const *URI;
 	size_t size_header;
 	size_t size_content;
 	size_t size_total;
@@ -607,16 +609,16 @@ int HttpRespondGetFavicon(
 }
 */
 
-// TODO: has more arguments than I would like but this is good enough for now, maybe it would be a good idea to put `URI` and `method` in the `request` data structure because eventually we are going to need to pass the request as well to the router
 __httpd_extern
 __httpd_internal
 int HttpRouter(
 	struct HttpResponse * const DataResponse,
-	struct ClientData const * const client,
-	char const * const URI,
-	enum HttpMethod const method
+	struct HttpRequest const * const DataRequest,
+	struct ClientData const * const client
 ) {
 	int rc = 0;
+	char const * const URI = DataRequest->URI;
+	enum HttpMethod const method = DataRequest->method;
 	for (int i = 0; i != client->modno; ++i) {
 		struct DataModule *module = &client->modules[i];
 		if (!module->handle) {
@@ -715,6 +717,7 @@ int HttpRespond(void *data) {
 		"\r\n"
 	);
 
+	struct HttpRequest DataRequest = {};
 	struct HttpResponse DataResponse = {};
 	memcpy(DataResponse.header, initial_response, sizeof(initial_response));
 
@@ -839,11 +842,16 @@ int HttpRespond(void *data) {
 		goto error_handler;
 	}
 
+	// TODO: normally we would provide this data structure and set the field values there, not here by copying but this is a good first step
+	DataRequest.method = method;
+	DataRequest.URI = URI;
+	memcpy(DataRequest.header, head, sizeof(head));
+
 	if (strcasestr(head, client->origin)) {
 		DataResponse.requires_cors = 1;
 	}
 
-	rc = HttpRouter(&DataResponse, client, URI, method);
+	rc = HttpRouter(&DataResponse, &DataRequest, client);
 	if (HTTP_FAILURE_RC == rc) {
 		goto fatal_error_handler;
 	}
