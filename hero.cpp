@@ -1,6 +1,6 @@
 /*
 
-sonic-httpd
+hydrogen
 
 Copyright (C) 2026 Misael Díaz-Maldonado
 
