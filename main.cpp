@@ -610,6 +610,67 @@ int HttpRespondGetFavicon(
 }
 */
 
+// TODO: has more arguments than I would like but this is good enough for now, maybe it would be a good idea to put `URI` and `method` in the `request` data structure because eventually we are going to need to pass the request as well to the router
+__httpd_extern
+__httpd_internal
+int HttpRouter(
+	struct HttpResponse * const DataResponse,
+	struct ClientData const * const client,
+	char const * const URI,
+	enum HttpMethod const method
+) {
+	int rc = 0;
+	for (int i = 0; i != client->modno; ++i) {
+		struct DataModule *module = &client->modules[i];
+		if (!module->handle) {
+			fprintf(
+				stderr,
+				"HttpRouter: missing handle of module %s\n",
+				module->name
+			);
+			goto error_handler;
+		}
+		else if (!module->data) {
+			fprintf(
+				stderr,
+				"HttpRouter: missing symbols of module %s\n",
+				module->name
+			);
+			goto error_handler;
+		}
+		struct HttpModule *mod = module->data;
+		if (strstr(URI, mod->name)) {
+			// TODO: pass the Http Request in the future, for now it's okay to pass NULL because it is not even referenced
+			if ((HTTP_METHOD_HEAD == method) && (mod->Head)) {
+				fprintf(stdout, "HttpRouter: %s\n", "head method");
+				rc = mod->Head(NULL, DataResponse);
+				if (HTTP_FAILURE_RC == rc) {
+					goto error_handler;
+				}
+			}
+			else if ((HTTP_METHOD_GET == method) && (mod->Get)) {
+				fprintf(stdout, "HttpRouter: %s\n", "get method");
+				rc = mod->Get(NULL, DataResponse);
+				if (HTTP_FAILURE_RC == rc) {
+					goto error_handler;
+				}
+			}
+			else {
+				fprintf(stdout, "HttpRouter: %s\n", "not-implemented method");
+				rc = HttpRespondNotImpl(DataResponse);
+				if (HTTP_FAILURE_RC == rc) {
+					goto error_handler;
+				}
+			}
+			break;
+		}
+	}
+
+	return HTTP_SUCCESS_RC;
+error_handler:
+	return HTTP_FAILURE_RC;
+}
+
 // TODO:
 // [ ] if Origin is in the request Header then the server must respond with `Access-Control-Allow-Origin: *` if that makes sense, otherwise what it is appropriate for the resource. However for images (which is just content) we can safely add that to the response header. Recommend reading (again):
 //
@@ -785,50 +846,9 @@ int HttpRespond(void *data) {
 		DataResponse.requires_cors = 1;
 	}
 
-	// TODO: refactor this into a function, this is the main router
-	for (int i = 0; i != client->modno; ++i) {
-		struct DataModule *module = &client->modules[i];
-		if (!module->handle) {
-			fprintf(
-				stderr,
-				"HttpRespond: missing handle of module %s\n",
-				module->name
-			);
-			goto error_handler;
-		}
-		else if (!module->data) {
-			fprintf(
-				stderr,
-				"HttpRespond: missing symbols of module %s\n",
-				module->name
-			);
-			goto error_handler;
-		}
-		struct HttpModule *mod = module->data;
-		if (strstr(URI, mod->name)) {
-			// TODO: pass the Http Request in the future, for now it's okay to pass NULL because it is not even referenced
-			if ((HTTP_METHOD_HEAD == method) && (mod->Head)) {
-				fprintf(stdout, "%s\n", "head method");
-				rc = mod->Head(NULL, &DataResponse);
-				if (HTTP_FAILURE_RC == rc) {
-					goto fatal_error_handler;
-				}
-			}
-			else if ((HTTP_METHOD_GET == method) && (mod->Get)) {
-				fprintf(stdout, "%s\n", "get method");
-				rc = mod->Get(NULL, &DataResponse);
-				if (HTTP_FAILURE_RC == rc) {
-					goto fatal_error_handler;
-				}
-			}
-			else {
-				rc = HttpRespondNotImpl(&DataResponse);
-				if (HTTP_FAILURE_RC == rc) {
-					goto fatal_error_handler;
-				}
-			}
-			break;
-		}
+	rc = HttpRouter(&DataResponse, client, URI, method);
+	if (HTTP_FAILURE_RC == rc) {
+		goto fatal_error_handler;
 	}
 
 	errno = 0;
