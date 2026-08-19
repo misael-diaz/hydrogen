@@ -103,7 +103,8 @@ struct HttpResponse {
 __httpd_extern
 __httpd_internal
 int HttpRespondNotImpl(
-	struct HttpResponse * const DataResponse
+	struct HttpResponse * const DataResponse,
+	struct HttpRequest const * const DataRequest __attribute__((unused))
 ) {
 	char CRLF[] = "\r\n";
 	char stat[] = "501";
@@ -642,21 +643,21 @@ int HttpRouter(
 			// TODO: pass the Http Request in the future, for now it's okay to pass NULL because it is not even referenced
 			if ((HTTP_METHOD_HEAD == method) && (mod->Head)) {
 				fprintf(stdout, "HttpRouter: %s\n", "head method");
-				rc = mod->Head(DataResponse, NULL);
+				rc = mod->Head(DataResponse, DataRequest);
 				if (HTTP_FAILURE_RC == rc) {
 					goto error_handler;
 				}
 			}
 			else if ((HTTP_METHOD_GET == method) && (mod->Get)) {
 				fprintf(stdout, "HttpRouter: %s\n", "get method");
-				rc = mod->Get(DataResponse, NULL);
+				rc = mod->Get(DataResponse, DataRequest);
 				if (HTTP_FAILURE_RC == rc) {
 					goto error_handler;
 				}
 			}
 			else {
 				fprintf(stdout, "HttpRouter: %s\n", "not-implemented method");
-				rc = HttpRespondNotImpl(DataResponse);
+				rc = HttpRespondNotImpl(DataResponse, DataRequest);
 				if (HTTP_FAILURE_RC == rc) {
 					goto error_handler;
 				}
