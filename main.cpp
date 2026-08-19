@@ -112,6 +112,7 @@ int HttpRespondNotImpl(
 	ssize_t avail = 0;
 	int rc = 0;
 
+	// FIXME: I know this is a quick hack that probably needs to go with a proper implementation, maybe starting to construct the response beforehand is starting to show its downside
 	char *p = strstr(DataResponse->header, "200");
 	if (!p) {
 		fprintf(stderr, "HttpRespondNotImpl: %s\n", "missing initial response pus");
