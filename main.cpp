@@ -360,8 +360,7 @@ int HttpSysRead(
 ) {
 	*bytes_proc = 0;
 	int sw = 0;
-	// TODO: try 2ms instead to avoid waiting for too long
-	float const microsleep_time_float = 20e3;
+	float const microsleep_time_float = 5e3;
 	useconds_t const microsleep_time = microsleep_time_float;
 	size_t tries = 0;
 	size_t const max_tries = 32;
