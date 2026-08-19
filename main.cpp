@@ -596,19 +596,7 @@ int HttpHeaderFindMethod(
 	return rc;
 }
 
-// NOTE: experimental code, this is so that we can respond with a favicon but this is not how I intend to handle responses
-// NOTE: this assumes that there are no more response header fields to include after this call
 // TODO: probably you want to keep a global list of files, so instead of having the child process find the file the server could do that during startup, generate the list, and grant access to the children via some suitable data structure (not global access per se). For development this is great, server responds with updated files.
-
-/*
-__httpd_extern
-__httpd_internal
-int HttpRespondGetFavicon(
-	struct HttpResponse * const DataResponse
-) {
-	return HttpRespondGetFile(DataResponse, HTTP_FAVICON_PATH);
-}
-*/
 
 __httpd_extern
 __httpd_internal
