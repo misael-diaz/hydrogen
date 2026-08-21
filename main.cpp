@@ -454,7 +454,22 @@ int HttpSysWrite(
 		ret = write(sockfd, p, bytes_write);
 		if (0 > ret) {
 			// NOTE: we have a non-blocking socket and on linux we need to handle tcp/ip errors as EAGAIN, for more info see `man accept`
-			if ((ENETUNREACH != errno) && (EOPNOTSUPP != errno) && (EHOSTUNREACH != errno) && (ENONET != errno) && (EHOSTDOWN != errno) && (ENOPROTOOPT != errno) && (EPROTO != errno) && (ENETDOWN != errno) && (EAGAIN != errno) && (EINTR != errno)) {
+			if (
+				(ECONNRESET != errno) &&
+				(ENETUNREACH != errno) &&
+				(EOPNOTSUPP != errno) &&
+				(EHOSTUNREACH != errno) &&
+				(ENONET != errno) &&
+				(EHOSTDOWN != errno) &&
+				(ENOPROTOOPT != errno) &&
+				(EPROTO != errno) &&
+				(ENETDOWN != errno) &&
+				(EAGAIN != errno) &&
+				(EINTR != errno)
+			   ) {
+				if (EPIPE == errno) {
+					fprintf(stderr, "HttpSysWrite: warning: %s\n", "got error EPIPE: Broken Pipe");
+				}
 				goto error_handler;
 			}
 			else {
@@ -537,7 +552,9 @@ int HttpResponseWrite(
 	if (HTTP_FAILURE_RC == rc) {
 		return rc;
 	}
-	rc = HttpSysWrite(sockfd, DataResponse->content, DataResponse->size_content);
+	if (DataResponse->size_content) {
+		rc = HttpSysWrite(sockfd, DataResponse->content, DataResponse->size_content);
+	}
 	return rc;
 }
 
@@ -864,6 +881,9 @@ error_handler:
 	return HTTP_FAILURE_RC;
 fatal_error_handler:
 	// NOTE: we are not able to write more data to the socket probably so it does not make sense to try to write to it but in the future we may want to log fatal errors specially and so it's a good idea to handle them specially
+	fprintf(stderr, "HttpRespond: closing socket %d\n", fd);
+	// NOTE: doing demystifies the return status that the parent process is going to report (our rc = -1 as an unsigned octet is just 255)
+	fprintf(stderr, "HttpRespond: returning status (unsigned octet) %u\n", (rc & 255));
 	close(fd);
 	return HTTP_FAILURE_RC;
 }
