@@ -1,0 +1,44 @@
+#
+# Hydrogen
+#
+# source: make-inc
+# author: @misael-diaz
+#
+# Copyright (c) 2026 Misael Diaz-Maldonado
+#
+# This file is released under the GNU General Public License version 2 only
+# as published by the Free Software Foundation.
+#
+
+CC = gcc
+
+CWD = $(shell pwd)
+CCOPT = -DDEVBUILD=1 \
+	-DDIRBUILD=\"$(CWD)\" \
+	-g \
+	-Wall \
+	-Wextra \
+	-Wformat \
+	-gdwarf-4 \
+	-O0
+
+# we need --export-dynamic to call hydrogen utils from the modules
+LNOPT = -Wl,--export-dynamic
+LIBS = -ldl
+
+SRV_CXX = main.cpp
+SRV_OBJ = main.obj
+SRV_BIN = hydrogen.bin
+
+# normally you would compile these in a separate project but it does not hurt to recompile the whole thing
+FAVICON_CXX = favicon.cpp
+HERO_CXX = hero.cpp
+ROOT_CXX = root.cpp
+
+FAVICON_SO = modules/favicon.so
+HERO_SO = modules/hero.so
+ROOT_SO = modules/root.so
+
+MODULES = $(FAVICON_SO) \
+	  $(HERO_SO) \
+	  $(ROOT_SO)

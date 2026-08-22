@@ -3,6 +3,7 @@
 *.js
 *.so
 *.o
+*.obj
 *.bin
 *.svg
 *.png
