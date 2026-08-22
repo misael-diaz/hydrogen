@@ -1,6 +1,8 @@
 # Hyrdrogen
 The lightweight http-server that's beating the web frameworks.
 
+Hydrogen's [documentation](https://misael-diaz.github.io/hydrogen/) is a work in progress but you are welcomed to consult it.
+
 ## Development
 
 ### Week 1
