@@ -75,9 +75,9 @@ https://developer.mozilla.org/en-US/docs/Web/API/Clipboard_API
     <div class="panel">
     <aside class="toc">
     <nav class="nav">
-      <h2>Index</h2>
+      <h2>Nav</h2>
       <ul>
-	<li><a class="anchor" href="#hydrogen_http_server">Hydrogen Http-Server</a></li>
+	<li><a class="anchor" href="#hydrogen_http_server">Hydrogen</a></li>
 	<li><a class="anchor" href="#compiling_hydrogen">Compiling Hydrogen</a></li>
 	<li><a class="anchor" href="#running_hydrogen">Running Hydrogen</a></li>
       </ul>
@@ -85,15 +85,20 @@ https://developer.mozilla.org/en-US/docs/Web/API/Clipboard_API
     <aside>
     </div>
     <article>
-      <h1 id="hydrogen_http_server">Hydrogen Http-Server</h1>
+      <h1 id="hydrogen_http_server">Hydrogen</h1>
+      <p>
+      The http-server written by a solo dev that's leaving web frameworks in the dust.
+      </p>
+      <h2>About</h2>
       <p>
       Hydrogen is my own implementation of an http-server written in C/C++. I am writing it because I do not need a web framework to develop performant web applications. Web frameworks might be great for other professional developers and that's fine with me, they are using the tools that they prefer. I get it, everyone on the team speaks the same language (in some sense) and it's great for collaboration. I am a solo developer and I enjoy developing my own tools because I get to familiarize myself with the entire stack starting from the system level. I do not intend to write a fully compliant implementation of the HTTP protocol, I am just implementing what my applications need. If you would like to use this software, you are on your own, don't ask me to add features unless you are willing to pay for my services. This is more honest than what AI companies do, have you pay for mediocre code at scales you are not willing to understand with no guarantee that the prices will not raise and that the quality if any will not worsen. Good luck with that.
       </p>
       <p>
-      So if you enjoyed the acidity of my previous remarks and you are still here you will find out that the purpose of this page is to share the lessons learned from attempting to implement an http-server just from the specs RFC9110 and RFC9112 and the Linux man pages. Unlike the so-called builders, prompt engineers, or whatever they fancty to call themselves these days, I do not use AI to generate code or for any other "assistance". The code that you see is mostly the result of experimentation and borrowing ideas from other open-source projects such as the xserver. For example, I got the idea of adding routes to the server by loading shared-objects by studying the xinput driver loading of the xserver. This is of course not unique to the xserver there are epic open-source games such as Quake II that use dynamic loading to enable modders to modify the game with ease. There are probably other ways to achieve the same flexibility but I did not bother to look at how other open-source projects that implement the http protocol do it. (Why would I want to spoil the fun of figuring it all out by myself?)
+      So if you enjoyed the acidity of my previous remarks and you are still here you will find out that the purpose of this page is to share the lessons learned from attempting to implement an http-server just from the specs <a href="https://www.rfc-editor.org/info/rfc9110">RFC9110</a> and <a href="https://www.rfc-editor.org/info/rfc9112">RFC9112</a> and the Linux man pages. Unlike the so-called builders, prompt engineers, or whatever they fancty to call themselves these days, I do not use AI to generate code or for any other "assistance". The code that you see is mostly the result of experimentation and borrowing ideas from other open-source projects such as the xserver. For example, I got the idea of adding routes to the server by loading shared-objects by studying the xinput driver loading of the xserver. This is of course not unique to the xserver there are epic open-source games such as <a href="https://github.com/id-Software/Quake-2">Quake-II</a> that use dynamic loading to enable modders to modify the game with ease. There are probably other ways to achieve the same flexibility but I did not bother to look at how other open-source projects that implement the http protocol do it. (Why would I want to spoil the fun of figuring it all out by myself?)
       </p>
+      <h2>Motivation</h2>
       <p>
-      <strong>CREDITS. NEEDS IMPROVEMENT.</strong> Part of the motivation for this project came from Lane's boot.dev implementing an http-parser in Golang. I did watch the first 30 minutes of the video featuring the Primeagen. I always enjoy his energy but this time I decided that I would watch only after doing the hard work myself to learn by comparing his approach of developing the http-parser to my own.
+      Part of the motivation for this project came from the boot.dev course <a href="https://www.youtube.com/watch?v=FknTw9bJsXM">From TCP to HTTP</a> in which the Primeagen teaches you how to build an http-parser with Golang basically from scratch. After watching the first 45 minutes of the video I decided that I would complete watching it after doing the hard work myself and then learn by comparing their solution to mine despite that I am using a different programming language and that I am embarking on the broader effort of actually building the server.
       </p>
       <h2 id="compiling_hydrogen">Compiling Hydrogen</h2>
       <p>
