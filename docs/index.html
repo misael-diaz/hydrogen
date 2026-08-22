@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <style>
+/*
+TODO:
+STYLE:
+[ ] improve the page style as you go. Note that to me writing the content is more important than having a pretty looking webpage from the onset. I care about substance not appearances ...
+[ ] consider using `grid-template-areas` to define page layout as in MDN docs, the `.` null is nice to ensure a spacing between areas (example space between navigation and content)
+
+https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/grid-template-areas
+
+LINKS:
+[ ] RFCs require links
+[ ] add links to the primeagen video on youtube
+[ ] add links to boot.dev
+CREDITS:
+[ ] I enjoy giving due credit to the developers that in some way or another have motivated me to embark on this journey. So you need to improve that and probably that needs a heading.
+NAV/PANEL:
+[ ] find out how the MDN devs managed to keep the navigation panel from scrolling down along with the content (in other words how did they manage to make it stick around)
+*/
+      .anchor {
+	text-decoration: none;
+	color: inherit !important;
+      }
+      .container {
+	display: grid;
+	grid-template-columns: 1fr 3fr;
+      }
+      .panel {
+	display: flex;
+	flex-direction: column;
+	justify-content: start;
+      }
+      .toc {
+	padding-left: 2px;
+      }
+      .nav {
+      }
+      .nav h2 {
+	margin-bottom: 0px;
+      }
+      .nav ul {
+	margin: 0px;
+	margin-top: 2px;
+	padding: 0px;
+	list-style: none;
+      }
+      .nav ul li {
+	padding-top: 2px;
+	padding-bottom: 2px;
+      }
+    </style>
+    <title>Hydrogen Http-Server</title>
+  </head>
+  <body>
+    <div class="container">
+    <div class="panel">
+    <aside class="toc">
+    <nav class="nav">
+      <h2>Index</h2>
+      <ul>
+	<li><a class="anchor" href="#hydrogen_http_server">Hydrogen Http-Server</a></li>
+	<li><a class="anchor" href="#compiling_hydrogen">Compiling Hydrogen</a></li>
+	<li><a class="anchor" href="#running_hydrogen">Running Hydrogen</a></li>
+      </ul>
+    </nav>
+    <aside>
+    </div>
+    <article>
+      <h1 id="hydrogen_http_server">Hydrogen Http-Server</h1>
+      <p>
+      Hydrogen is my own implementation of an http-server written in C/C++. I am writing it because I do not need a web framework to develop performant web applications. Web frameworks might be great for other professional developers and that's fine with me, they are using the tools that they prefer. I get it, everyone on the team speaks the same language (in some sense) and it's great for collaboration. I am a solo developer and I enjoy developing my own tools because I get to familiarize myself with the entire stack starting from the system level. I do not intend to write a fully compliant implementation of the HTTP protocol, I am just implementing what my applications need. If you would like to use this software, you are on your own, don't ask me to add features unless you are willing to pay for my services. This is more honest than what AI companies do, have you pay for mediocre code at scales you are not willing to understand with no guarantee that the prices will not raise and that the quality if any will not worsen. Good luck with that.
+      </p>
+      <p>
+      So if you enjoyed the acidity of my previous remarks and you are still here you will find out that the purpose of this page is to share the lessons learned from attempting to implement an http-server just from the specs RFC9110 and RFC9112 and the Linux man pages. Unlike the so-called builders, prompt engineers, or whatever they fancty to call themselves these days, I do not use AI to generate code or for any other "assistance". The code that you see is mostly the result of experimentation and borrowing ideas from other open-source projects such as the xserver. For example, I got the idea of adding routes to the server by loading shared-objects by studying the xinput driver loading of the xserver. This is of course not unique to the xserver there are epic open-source games such as Quake II that use dynamic loading to enable modders to modify the game with ease. There are probably other ways to achieve the same flexibility but I did not bother to look at how other open-source projects that implement the http protocol do it. (Why would I want to spoil the fun of figuring it all out by myself?)
+      </p>
+      <p>
+      <strong>CREDITS. NEEDS IMPROVEMENT.</strong> Part of the motivation for this project came from Lane's boot.dev implementing an http-parser in Golang. I did watch the first 30 minutes of the video featuring the Primeagen. I always enjoy his energy but this time I decided that I would watch only after doing the hard work myself to learn by comparing his approach of developing the http-parser to my own.
+      </p>
+      <h2 id="compiling_hydrogen">Compiling Hydrogen</h2>
+      <p>
+      All that you need to compile the hydrogen source code into a binary is the GNU Compiler Collection (GCC) along some standard libraries that should be present in most Linux distributions.
+      </p>
+      <h2 id="running_hydrogen">Running Hydrogen</h2>
+      <p>
+      To be added.
+      </p>
+    </article>
+    </div>
+  </body>
+</html>
