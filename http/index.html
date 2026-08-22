@@ -36,8 +36,16 @@ https://developer.mozilla.org/en-US/docs/Web/API/Clipboard_API
 	flex-direction: column;
 	justify-content: start;
       }
+/*
+
+NOTE: we use `position` and `top` properties to keep the navigation panel from scrolling along with the article content
+
+https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/position
+*/
       .toc {
 	padding-left: 2px;
+	position: sticky;
+	top: 0px;
       }
       .nav {
       }
