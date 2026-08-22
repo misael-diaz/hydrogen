@@ -30,10 +30,16 @@ Hydrogen's [documentation](https://misael-diaz.github.io/hydrogen/) is a work in
 
 ## Build
 
-Build the server from source code with GCC:
+Build the server from source code with just GCC (no makefile required):
 
 ```sh
 mkdir -p modules && gcc -DDEVBUILD=1 -DDIRBUILD="\"$PWD\"" -Wall -Wextra -Wformat -fPIC -g -gdwarf-4 -shared -O0 favicon.cpp -o modules/favicon.so && gcc -DDEVBUILD=1 -DDIRBUILD="\"$PWD\"" -Wall -Wextra -Wformat -fPIC -g -gdwarf-4 -shared -O0 hero.cpp -o modules/hero.so && gcc -DDEVBUILD=1 -DDIRBUILD="\"$PWD\"" -Wall -Wextra -Wformat -fPIC -g -gdwarf-4 -shared -O0 root.cpp -o modules/root.so && gcc -DDEVBUILD=1 -DDIRBUILD="\"$PWD\"" -Wall -Wextra -Wformat -g -gdwarf-4 -O0 -c main.cpp -o main.o && gcc -DDEVBUILD=1 -DDIRBUILD="\"$PWD\"" -Wall -Wextra -Wformat -g -gdwarf-4 -O0 main.o -o hydrogen.bin -Wl,--export-dynamic -ldl
+```
+
+or if you prefer you can build hydrogen with GNU make by executing from the top-level of the repository:
+
+```sh
+make
 ```
 
 ## Run
